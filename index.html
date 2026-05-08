@@ -350,8 +350,15 @@ Check ALL fields for this specific product:
 - Expiry date / 有效期
 - 成分 / Ingredients
 
+IMPORTANT RULES FOR STATUS:
+- Field on label AND in master → compare exactly → "MATCH" or "MISMATCH"
+- Field on label but NOT in master file → "NOT_IN_MASTER" (not a failure)
+- Field in master but not visible on label → "NOT_VISIBLE" (not a failure)
+- overall = "FAIL" ONLY if at least one field is "MISMATCH"
+- "NOT_IN_MASTER" and "NOT_VISIBLE" never cause overall FAIL
+
 Return ONLY raw JSON:
-{"product_name_zh":"READ FROM PHOTO LABEL — exact Chinese name printed on label","product_name_en":"READ FROM PHOTO LABEL — exact English name printed on label","lot_on_label":"READ FROM PHOTO LABEL — exact LOT/批号 printed on label or null","expiry_date":"READ FROM PHOTO LABEL — exact expiry date printed on label or null","overall":"PASS or FAIL","summary_zh":"一句话","summary_en":"one sentence","fields":[{"field":"","field_zh":"","label_value":"exact text from photo","master_value":"text from Word document","status":"MATCH or MISMATCH or NOT_VISIBLE","note":""}]}`}
+{"product_name_zh":"exact Chinese name from photo label","product_name_en":"exact English name from photo label","lot_on_label":"exact LOT from photo label or null","expiry_date":"exact expiry date from photo label or null","overall":"PASS or FAIL","summary_zh":"一句话","summary_en":"one sentence","fields":[{"field":"","field_zh":"","label_value":"exact text from photo","master_value":"exact text from master or null if not in master","status":"MATCH or MISMATCH or NOT_VISIBLE or NOT_IN_MASTER","note":""}]}`}
         ]);
         const result=JSON.parse(cRaw.replace(/```json|```/g,'').trim().match(/\{[\s\S]*\}/)[0]);
         photoResults.push({photo,mf:mf.name,result,productIndex:p,totalProducts:products.length});
@@ -411,11 +418,11 @@ function renderResults(results){
     const mis=(r.result?.fields||[]).filter(f=>f.status==='MISMATCH').length;
     const multiLabel=r.totalProducts>1?` <span style="font-size:10px;background:#e6f4ff;color:#1677ff;padding:2px 6px;border-radius:8px;font-weight:600;">Product ${(r.productIndex||0)+1}/${r.totalProducts}</span>`:'';
     const fields=(r.result?.fields||[]).map(f=>{
-      const dc=f.status==='MATCH'?'dok':f.status==='MISMATCH'?'dno':'dwarn';
+      const dc=f.status==='MATCH'?'dok':f.status==='MISMATCH'?'dno':f.status==='NOT_IN_MASTER'?'dwarn':'dwarn';
       return `<div class="frow"><div class="fdot ${dc}"></div><div>
-        <div class="fname">${f.field}${f.field_zh?' / '+f.field_zh:''}</div>
+        <div class="fname">${f.field}${f.field_zh?' / '+f.field_zh:''} ${f.status==='NOT_IN_MASTER'?'<span style="background:#f5f5f5;color:#999;font-size:9px;padding:1px 5px;border-radius:4px;font-weight:600;">NOT IN MASTER</span>':f.status==='NOT_VISIBLE'?'<span style="background:#f5f5f5;color:#999;font-size:9px;padding:1px 5px;border-radius:4px;font-weight:600;">NOT VISIBLE</span>':''}</div>
         <div class="fval">${f.label_value||'—'}</div>
-        ${f.master_value&&f.master_value!==f.label_value?`<div class="fnote">✦ Master: ${f.master_value}</div>`:''}
+        ${f.status==='MISMATCH'&&f.master_value?`<div class="fnote">✦ Master: ${f.master_value}</div>`:''}
         ${f.note?`<div class="fnote">⚠ ${f.note}</div>`:''}
       </div></div>`;
     }).join('');
