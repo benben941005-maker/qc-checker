@@ -200,6 +200,7 @@ body{font-family:'Sora','Noto Sans SC',sans-serif;background:var(--paper);color:
 
 <div class="toast" id="toast"></div>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
 <script>
 const CLIENT_ID='297911594147-ig0jsulc8b225b2bfba5dv0rvp0029c2.apps.googleusercontent.com';
 const SCOPES='https://www.googleapis.com/auth/drive.readonly';
@@ -299,11 +300,32 @@ async function runBatch(){
       ]);
       const m=JSON.parse(mRaw.replace(/```json|```/g,'').trim().match(/\{[\s\S]*\}/)[0]);
       const mf=allFiles[Math.min(parseInt(m.file_index)||0,allFiles.length-1)];
-      const fb=await gDownload(mf.id);
+      const arrayBuffer=await gDownload(mf.id);
+      const docText=await extractDocxText(arrayBuffer);
       const cRaw=await claude(apiKey,[
         {type:'image',source:{type:'base64',media_type:photo.mime,data:photo.b64}},
-        {type:'document',source:{type:'base64',media_type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',data:fb}},
-        {type:'text',text:`QC expert: compare PHOTO vs WORD DOCUMENT (source of truth). Master: ${mf.name}\nCheck: 中文名,English name,描述,description,barcode,净重,LOT/批号,成分,ingredients,expiry.\nReturn ONLY JSON: {"product_name_zh":"","product_name_en":"","lot_on_label":"","expiry_date":"","overall":"PASS or FAIL","summary_zh":"","summary_en":"","fields":[{"field":"","field_zh":"","label_value":"","master_value":"","status":"MATCH or MISMATCH or NOT_VISIBLE","note":""}]}`}
+        {type:'text',text:`You are a bilingual product label QC expert.
+Compare the PHOTO against this MASTER WORD DOCUMENT content (source of truth).
+Master file: ${mf.name}
+
+MASTER DOCUMENT TEXT:
+---
+${docText||'(Could not extract text — use filename as reference: '+mf.name+')'}
+---
+
+Check ALL fields visible on label vs master:
+- 中文产品名称 / Chinese product name
+- English product name
+- 中文描述 / Chinese description
+- English description
+- Barcode / 条形码
+- Net weight / 净重
+- LOT / 批号 (read from label image)
+- Expiry date / 有效期 (read from label image)
+- 成分 / Ingredients (ZH & EN)
+
+Return ONLY raw JSON:
+{"product_name_zh":"","product_name_en":"","lot_on_label":"","expiry_date":"","overall":"PASS or FAIL","summary_zh":"一句话","summary_en":"one sentence","fields":[{"field":"","field_zh":"","label_value":"","master_value":"","status":"MATCH or MISMATCH or NOT_VISIBLE","note":""}]}`}
       ]);
       const result=JSON.parse(cRaw.replace(/```json|```/g,'').trim().match(/\{[\s\S]*\}/)[0]);
       setThumb(i,result.overall==='PASS'?'ts-ok':'ts-no',result.overall==='PASS'?'✓':'✗');
@@ -392,8 +414,16 @@ async function gFetch(url){
 async function gDownload(id){
   const r=await fetch(`https://www.googleapis.com/drive/v3/files/${id}?alt=media`,{headers:{Authorization:'Bearer '+gToken}});
   if(!r.ok)throw new Error('Cannot download file');
-  const blob=await r.blob();
-  return new Promise((res,rej)=>{const rd=new FileReader();rd.onload=()=>res(rd.result.split(',')[1]);rd.onerror=rej;rd.readAsDataURL(blob);});
+  return await r.arrayBuffer();
+}
+
+async function extractDocxText(arrayBuffer){
+  try{
+    const result=await mammoth.extractRawText({arrayBuffer});
+    return result.value.trim();
+  }catch(e){
+    return '';
+  }
 }
 
 async function claude(apiKey,content){
