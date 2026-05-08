@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="theme-color" content="#0e1117">
+<title>品质 QC Checker</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=DM+Mono:wght@400;500&family=Sora:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink:#0e1117; --paper:#f5f2ec; --card:#fff;
+  --red:#d4380d; --green:#237804; --orange:#d46b08; --blue:#1677ff;
+  --border:#e0dbd0; --muted:#8c8070;
+  --shadow:0 2px 20px rgba(14,17,23,0.08); --r:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{font-family:'Sora','Noto Sans SC',sans-serif;background:var(--paper);color:var(--ink);min-height:100vh;max-width:480px;margin:0 auto;padding-bottom:30px;}
+
+/* NAV */
+.topnav{position:sticky;top:0;z-index:100;background:var(--ink);padding:14px 18px 0;}
+.nav-top{display:flex;align-items:center;justify-content:space-between;padding-bottom:12px;}
+.app-title{color:#fff;font-size:19px;font-weight:800;letter-spacing:-0.5px;}
+.app-title span{color:#ff6b35;}
+.drive-pill{font-size:11px;font-family:'DM Mono',monospace;padding:5px 12px;border-radius:20px;border:none;cursor:pointer;transition:all 0.2s;}
+.drive-pill.off{background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.5);}
+.drive-pill.on{background:rgba(82,196,26,0.2);color:#52c41a;}
+.drive-pill.busy{background:rgba(255,179,71,0.2);color:#ffb347;}
+.tabs{display:flex;gap:5px;padding-bottom:12px;}
+.tab{flex:1;padding:9px 0;text-align:center;font-size:12px;font-weight:600;border-radius:9px;cursor:pointer;color:rgba(255,255,255,0.4);border:none;background:transparent;transition:all 0.2s;font-family:'Sora',sans-serif;}
+.tab.active{background:rgba(255,255,255,0.14);color:#fff;}
+
+/* PAGES */
+.page{display:none;padding:18px;}
+.page.active{display:block;animation:fadeIn 0.2s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+
+/* STEP LABEL */
+.slabel{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;margin-top:20px;display:flex;align-items:center;gap:8px;}
+.slabel:first-child{margin-top:0;}
+.step-num{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--ink);color:#fff;font-size:10px;font-weight:700;flex-shrink:0;}
+.step-num.done{background:var(--green);}
+
+/* CONNECT BOX */
+.connect-box{background:var(--card);border-radius:var(--r);border:2px dashed var(--border);padding:28px 20px;text-align:center;margin-bottom:12px;box-shadow:var(--shadow);}
+.connect-box.connected{border-style:solid;border-color:var(--green);background:#f6ffed;}
+.connect-icon{font-size:40px;margin-bottom:10px;}
+.connect-title{font-size:15px;font-weight:700;margin-bottom:4px;}
+.connect-sub{font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6;}
+
+/* MASTER LIST */
+.master-list{background:var(--card);border-radius:var(--r);border:1px solid var(--border);overflow:hidden;margin-bottom:12px;max-height:240px;overflow-y:auto;box-shadow:var(--shadow);}
+.master-item{padding:13px 15px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;cursor:pointer;transition:background 0.15s;}
+.master-item:last-child{border-bottom:none;}
+.master-item.selected{background:#e6f4ff;}
+.master-item:active{background:var(--paper);}
+.m-dot{width:8px;height:8px;border-radius:50%;background:var(--border);flex-shrink:0;transition:background 0.2s;}
+.master-item.selected .m-dot{background:var(--blue);}
+.m-name{flex:1;font-size:13px;font-weight:500;line-height:1.3;}
+.m-date{font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;flex-shrink:0;}
+.list-empty{padding:30px 20px;text-align:center;color:var(--muted);font-size:13px;line-height:1.7;}
+
+/* SEARCH */
+.search-input{width:100%;border:1.5px solid var(--border);border-radius:10px;padding:10px 14px;font-size:14px;font-family:'Sora',sans-serif;background:var(--card);color:var(--ink);outline:none;margin-bottom:8px;}
+.search-input:focus{border-color:var(--ink);}
+
+/* FIELD INPUT */
+.field-input{width:100%;border:1.5px solid var(--border);border-radius:12px;padding:14px 15px;font-size:16px;font-family:'DM Mono',monospace;background:var(--card);color:var(--ink);outline:none;transition:border 0.2s;box-shadow:var(--shadow);margin-bottom:12px;}
+.field-input:focus{border-color:var(--ink);}
+
+/* CAMERA */
+.camera-box{border:2.5px dashed var(--border);border-radius:var(--r);aspect-ratio:4/3;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;flex-direction:column;background:var(--card);cursor:pointer;margin-bottom:12px;transition:all 0.2s;box-shadow:var(--shadow);}
+.camera-box.has-img{border-style:solid;border-color:var(--ink);}
+.camera-box input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer;}
+#prevImg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none;}
+.cam-ph{pointer-events:none;text-align:center;}
+.cam-icon{font-size:48px;margin-bottom:10px;}
+.cam-label{font-size:16px;font-weight:600;}
+.cam-sub{font-size:12px;color:var(--muted);margin-top:4px;}
+
+/* PROGRESS */
+.prog-wrap{margin-bottom:12px;display:none;}
+.prog-lbl{font-size:12px;color:var(--muted);margin-bottom:6px;font-family:'DM Mono',monospace;}
+.prog-track{height:3px;background:var(--border);border-radius:2px;overflow:hidden;}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--ink),#555);border-radius:2px;transition:width 0.5s ease;width:0%;}
+
+/* BUTTONS */
+.btn{width:100%;padding:15px;border:none;border-radius:12px;font-size:15px;font-weight:700;font-family:'Sora',sans-serif;cursor:pointer;transition:all 0.18s;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px;}
+.btn-dark{background:var(--ink);color:#fff;box-shadow:0 4px 14px rgba(14,17,23,0.2);}
+.btn-dark:active{transform:scale(0.97);}
+.btn-google{background:#fff;color:#444;border:1.5px solid var(--border);box-shadow:var(--shadow);}
+.btn-outline{background:transparent;color:var(--ink);border:1.5px solid var(--border);}
+.btn-sm{padding:10px 14px;font-size:13px;}
+.btn:disabled{opacity:0.35;cursor:not-allowed;transform:none!important;box-shadow:none!important;}
+
+/* RESULT */
+.result-card{background:var(--card);border-radius:var(--r);border:1px solid var(--border);overflow:hidden;margin-top:18px;box-shadow:var(--shadow);}
+.result-head{padding:18px 16px;display:flex;gap:14px;align-items:flex-start;}
+.r-icon{font-size:32px;flex-shrink:0;}
+.r-name-zh{font-size:19px;font-weight:700;line-height:1.3;}
+.r-name-en{font-size:12px;color:var(--muted);margin-top:3px;}
+.r-lot{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:4px;}
+.r-badge{display:inline-block;margin-top:10px;font-size:12px;font-weight:700;padding:5px 14px;border-radius:20px;}
+.badge-pass{background:#f6ffed;color:var(--green);border:1px solid #b7eb8f;}
+.badge-fail{background:#fff2e8;color:var(--red);border:1px solid #ffbb96;}
+.r-summary{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.6;}
+.field-list{border-top:1px solid var(--border);}
+.field-row{display:flex;align-items:flex-start;padding:12px 16px;border-bottom:1px solid var(--border);gap:10px;}
+.field-row:last-child{border-bottom:none;}
+.f-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:5px;}
+.dot-ok{background:var(--green);}.dot-fail{background:var(--red);}.dot-warn{background:var(--orange);}
+.f-info{flex:1;min-width:0;}
+.f-name{font-size:10px;color:var(--muted);font-weight:700;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px;}
+.f-val{font-size:13px;color:var(--ink);line-height:1.4;}
+.f-master{font-size:12px;color:var(--red);margin-top:2px;}
+.f-note{font-size:12px;color:var(--red);font-weight:600;margin-top:2px;}
+
+/* LOG */
+.log-item{background:var(--card);border-radius:14px;border:1px solid var(--border);padding:14px 16px;margin-bottom:10px;box-shadow:var(--shadow);}
+.log-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:5px;}
+.log-name{font-size:15px;font-weight:700;flex:1;line-height:1.3;}
+.log-bdg{font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;flex-shrink:0;margin-top:2px;}
+.bdg-ok{background:#f6ffed;color:var(--green);border:1px solid #b7eb8f;}
+.bdg-fail{background:#fff2e8;color:var(--red);border:1px solid #ffbb96;}
+.log-en{font-size:12px;color:var(--muted);margin-bottom:3px;}
+.log-meta{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;line-height:1.6;}
+.log-empty{text-align:center;padding:60px 20px;color:var(--muted);font-size:14px;line-height:1.8;}
+
+/* SETTINGS */
+.card{background:var(--card);border-radius:var(--r);border:1px solid var(--border);padding:16px;margin-bottom:14px;box-shadow:var(--shadow);}
+.set-row{display:flex;flex-direction:column;gap:5px;margin-bottom:13px;}
+.set-label{font-size:12px;font-weight:600;color:var(--muted);}
+.set-input{border:1.5px solid var(--border);border-radius:10px;padding:11px 13px;font-size:13px;font-family:'DM Mono',monospace;background:var(--paper);color:var(--ink);width:100%;outline:none;}
+.set-input:focus{border-color:var(--ink);}
+.info-box{background:#fffbe6;border:1px solid #ffe58f;border-radius:10px;padding:12px 14px;font-size:12px;color:#7c5c00;line-height:1.7;margin-top:8px;}
+
+/* UPLOAD BOX */
+.upload-box{border:2.5px dashed var(--border);border-radius:var(--r);padding:26px 16px;text-align:center;cursor:pointer;position:relative;background:var(--card);transition:all 0.2s;box-shadow:var(--shadow);margin-bottom:10px;}
+.upload-box.loaded{border-style:solid;border-color:var(--ink);}
+.upload-box input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer;}
+.upload-icon{font-size:38px;margin-bottom:8px;}
+.upload-label{font-size:14px;font-weight:700;}
+.upload-sub{font-size:12px;color:var(--muted);margin-top:3px;}
+.upload-badge{display:inline-flex;align-items:center;gap:6px;margin-top:10px;background:#f0fdf4;border:1px solid #b7eb8f;color:var(--green);font-size:12px;font-weight:600;padding:5px 12px;border-radius:20px;font-family:'DM Mono',monospace;}
+
+/* THUMBNAILS */
+.thumb{width:72px;height:72px;border-radius:10px;object-fit:cover;border:2px solid var(--border);position:relative;flex-shrink:0;}
+.thumb-wrap{position:relative;width:72px;height:72px;}
+.thumb-wrap .thumb-status{position:absolute;bottom:3px;right:3px;width:18px;height:18px;border-radius:50%;font-size:11px;display:flex;align-items:center;justify-content:center;font-weight:700;border:2px solid #fff;}
+.thumb-status.pending{background:#e0e0e0;}
+.thumb-status.checking{background:var(--orange);animation:pulse 1s infinite;}
+.thumb-status.pass{background:var(--green);}
+.thumb-status.fail{background:var(--red);}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.5;}}
+
+/* BATCH RESULT CARD */
+.batch-summary{background:var(--card);border-radius:var(--r);border:1px solid var(--border);overflow:hidden;margin-top:18px;box-shadow:var(--shadow);}
+.batch-sum-head{padding:16px;display:flex;gap:12px;align-items:center;border-bottom:1px solid var(--border);}
+.batch-stats{display:flex;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+.stat-pill{flex:1;min-width:80px;text-align:center;padding:10px 8px;border-radius:10px;font-size:13px;font-weight:700;}
+.stat-pass{background:#f6ffed;color:var(--green);border:1px solid #b7eb8f;}
+.stat-fail{background:#fff2e8;color:var(--red);border:1px solid #ffbb96;}
+.stat-total{background:var(--paper);color:var(--ink);border:1px solid var(--border);}
+.batch-item{padding:14px 16px;border-bottom:1px solid var(--border);cursor:pointer;}
+.batch-item:last-child{border-bottom:none;}
+.batch-item-top{display:flex;align-items:center;gap:10px;margin-bottom:4px;}
+.batch-thumb-sm{width:44px;height:44px;border-radius:8px;object-fit:cover;flex-shrink:0;}
+.batch-item-info{flex:1;min-width:0;}
+.batch-item-name{font-size:14px;font-weight:700;line-height:1.3;}
+.batch-item-en{font-size:11px;color:var(--muted);}
+.batch-item-badge{font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;flex-shrink:0;}
+.batch-detail{display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
+.batch-detail.open{display:block;}
+
+/* TOAST */
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(16px);background:var(--ink);color:#fff;padding:12px 22px;border-radius:30px;font-size:13px;font-weight:600;opacity:0;transition:all 0.3s;pointer-events:none;z-index:999;max-width:88vw;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,0.25);white-space:nowrap;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <div class="nav-top">
+    <div class="app-title">品质 <span>QC</span></div>
+    <button class="drive-pill off" id="drivePill" onclick="goTab('settings')">● Google Drive</button>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="goTab('scan')">📷 Scan</button>
+    <button class="tab" onclick="goTab('log')">📋 Log</button>
+    <button class="tab" onclick="goTab('settings')">⚙ Settings</button>
+  </div>
+</nav>
+
+<!-- ══ SCAN ════════════════════════════════════════════════ -->
+<div class="page active" id="page-scan">
+
+  <div class="slabel"><span class="step-num">1</span> Connect Google Drive</div>
+  <div id="notConnected">
+    <div class="connect-box">
+      <div class="connect-icon">📁</div>
+      <div class="connect-title">Connect Google Drive</div>
+      <div class="connect-sub">Sign in once — master files load automatically</div>
+      <button class="btn btn-google" style="width:auto;padding:12px 24px;margin:0 auto;" onclick="signIn()">
+        <img src="https://www.google.com/favicon.ico" width="16" height="16"> &nbsp;Sign in with Google
+      </button>
+    </div>
+  </div>
+  <div id="connectedArea" style="display:none;">
+    <div style="background:#f6ffed;border:1px solid #b7eb8f;border-radius:10px;padding:10px 14px;font-size:13px;color:var(--green);font-weight:600;margin-bottom:10px;">
+      ✓ Google Drive connected — <span id="fileCount">0</span> master files loaded
+    </div>
+    <button class="btn btn-outline btn-sm" onclick="loadFiles()" style="margin-bottom:4px;">↻ Refresh master files</button>
+  </div>
+
+  <div class="slabel"><span class="step-num">2</span> Upload Product Label Photos</div>
+  <div class="upload-box" id="batchBox">
+    <input type="file" id="batchInput" accept="image/*" multiple onchange="handleBatch(event)">
+    <div class="upload-icon">📷</div>
+    <div class="upload-label">Tap to select multiple photos</div>
+    <div class="upload-sub">Select all label photos at once — AI checks each one</div>
+    <div id="batchBadge"></div>
+  </div>
+
+  <!-- Photo preview thumbnails -->
+  <div id="thumbArea" style="display:none;">
+    <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">
+      Selected Photos
+    </div>
+    <div id="thumbGrid" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;"></div>
+  </div>
+
+  <div style="background:#fffbe6;border:1px solid #ffe58f;border-radius:10px;padding:10px 14px;font-size:12px;color:#7c5c00;margin-bottom:12px;">
+    📌 LOT number / 批号 will be <b>auto-detected from each photo</b> by AI
+  </div>
+
+  <!-- Progress area -->
+  <div id="batchProgress" style="display:none;margin-bottom:12px;">
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+      <div class="prog-lbl" id="progLbl">Checking...</div>
+      <div style="font-size:12px;font-family:'DM Mono',monospace;color:var(--muted);" id="progCounter">0 / 0</div>
+    </div>
+    <div class="prog-track"><div class="prog-fill" id="progFill"></div></div>
+  </div>
+
+  <button class="btn btn-dark" id="checkBtn" onclick="runBatchCheck()" disabled>
+    🔍 &nbsp;Check All Photos
+  </button>
+
+  <!-- Batch results -->
+  <div id="resultArea"></div>
+</div>
+
+<!-- ══ LOG ═════════════════════════════════════════════════ -->
+<div class="page" id="page-log">
+  <div style="display:flex;gap:8px;margin-bottom:16px;">
+    <button class="btn btn-outline btn-sm" style="flex:1;" onclick="exportCSV()">⬇ Export CSV</button>
+    <button class="btn btn-outline btn-sm" style="flex:1;color:var(--red);" onclick="clearLog()">🗑 Clear</button>
+  </div>
+  <div id="logList"><div class="log-empty">No checks yet.<br>Go to Scan tab to start. 📷</div></div>
+</div>
+
+<!-- ══ SETTINGS ════════════════════════════════════════════ -->
+<div class="page" id="page-settings">
+
+  <div class="slabel">Google Drive</div>
+  <div class="card">
+    <div id="driveStatusCard">
+      <div style="font-size:13px;color:var(--muted);margin-bottom:12px;">Not connected yet.</div>
+    </div>
+    <button class="btn btn-google btn-sm" onclick="signIn()">
+      <img src="https://www.google.com/favicon.ico" width="14" height="14"> &nbsp;Sign in with Google
+    </button>
+    <div class="set-row" style="margin-top:14px;">
+      <div class="set-label">Google Drive Folder Name</div>
+      <input class="set-input" id="folderName" placeholder="Labels" value="Labels">
+    </div>
+    <button class="btn btn-dark btn-sm" onclick="saveFolder()">💾 Save Folder Name</button>
+    <div class="info-box">
+      This is the folder name in Google Drive where your Word master files are stored.<br>
+      e.g. <b>Labels</b> or <b>KH PRODUCTS</b>
+    </div>
+  </div>
+
+  <div class="slabel">Claude AI API Key</div>
+  <div class="card">
+    <div class="set-row">
+      <div class="set-label">Anthropic API Key</div>
+      <input class="set-input" id="apiKey" type="password" placeholder="sk-ant-api03-...">
+    </div>
+    <button class="btn btn-dark btn-sm" onclick="saveApiKey()">💾 Save API Key</button>
+    <div class="info-box">
+      Get at <b>console.anthropic.com</b> → add $5 credit<br>
+      ~$0.02 per check → $5 = ~250 checks
+    </div>
+  </div>
+
+  <div class="slabel">Save App to iPhone Home Screen</div>
+  <div class="card" style="font-size:13px;color:var(--muted);line-height:1.9;">
+    Open this page in <b>Safari</b> → tap <b>📤 Share</b><br>
+    → tap <b>"Add to Home Screen"</b> → tap <b>Add</b><br><br>
+    App icon appears on your home screen —<br>
+    <b style="color:var(--ink);">opens like a normal app, no browser bar!</b>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script>
+// ══ CONFIG ══════════════════════════════════════════════
+const CLIENT_ID = '297911594147-ig0jsulc8b225b2bfba5dv0rvp0029c2.apps.googleusercontent.com';
+const SCOPES    = 'https://www.googleapis.com/auth/drive.readonly';
+
+// ══ STATE ═══════════════════════════════════════════════
+let gToken     = null;
+let allFiles   = [];   // master Word files from Drive
+let batchPhotos = [];  // [{name, b64, mime, previewUrl}]
+let checkLog   = [];
+
+// ══ INIT ════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  loadSettings();
+  loadLog();
+  renderLog();
+  const t = sessionStorage.getItem('gtoken');
+  if (t) { gToken = t; onSignedIn(); }
+});
+
+// ══ TABS ════════════════════════════════════════════════
+function goTab(n) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  ['scan','log','settings'].forEach((name,i)=>{
+    if(name===n){ document.querySelectorAll('.tab')[i].classList.add('active'); document.getElementById('page-'+name).classList.add('active'); }
+  });
+  if(n==='log') renderLog();
+}
+
+// ══ GOOGLE SIGN IN ═══════════════════════════════════════
+function signIn() {
+  try {
+    const client = google.accounts.oauth2.initTokenClient({
+      client_id: CLIENT_ID, scope: SCOPES,
+      callback: (resp) => {
+        if (resp.error) { showToast('❌ Sign in failed: '+resp.error); return; }
+        gToken = resp.access_token;
+        sessionStorage.setItem('gtoken', gToken);
+        onSignedIn();
+      }
+    });
+    client.requestAccessToken();
+  } catch(e) { showToast('❌ Sign-in error. Check internet.'); }
+}
+
+function onSignedIn() {
+  document.getElementById('notConnected').style.display = 'none';
+  document.getElementById('connectedArea').style.display = 'block';
+  document.getElementById('drivePill').textContent = '● Drive Connected';
+  document.getElementById('drivePill').className = 'drive-pill on';
+  document.getElementById('driveStatusCard').innerHTML =
+    '<div style="font-size:13px;color:var(--green);font-weight:600;">✓ Google Drive connected</div>';
+  loadFiles();
+}
+
+// ══ LOAD MASTER FILES ════════════════════════════════════
+async function loadFiles() {
+  if (!gToken) return;
+  const folder = localStorage.getItem('qc_folder') || 'registered product labels';
+  setPill('busy','● Loading...');
+  try {
+    const fRes = await gFetch(`https://www.googleapis.com/drive/v3/files?q=name='${encodeURIComponent(folder)}' and mimeType='application/vnd.google-apps.folder' and trashed=false&fields=files(id,name)`);
+    if (!fRes.files?.length) { showToast(`❌ Folder "${folder}" not found`); setPill('on','● Drive Connected'); return; }
+    const fid = fRes.files[0].id;
+    const lRes = await gFetch(`https://www.googleapis.com/drive/v3/files?q='${fid}' in parents and trashed=false and (name contains '.docx' or name contains '.doc')&fields=files(id,name,modifiedTime)&orderBy=name`);
+    allFiles = lRes.files || [];
+    document.getElementById('fileCount').textContent = allFiles.length;
+    setPill('on','● Drive Connected');
+    showToast(`✓ ${allFiles.length} master files ready`);
+  } catch(e) { setPill('off','● Drive Error'); showToast('❌ '+e.message); }
+}
+
+function setPill(cls,txt) {
+  const p = document.getElementById('drivePill');
+  p.className='drive-pill '+cls; p.textContent=txt;
+}
+
+// ══ BATCH PHOTO UPLOAD ═══════════════════════════════════
+async function handleBatch(e) {
+  const files = Array.from(e.target.files).filter(f => f.type.startsWith('image/'));
+  if (!files.length) { showToast('No images selected'); return; }
+
+  batchPhotos = [];
+  document.getElementById('thumbGrid').innerHTML = '';
+
+  await Promise.all(files.map(file => new Promise(res => {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const b64 = ev.target.result.split(',')[1];
+      batchPhotos.push({ name: file.name, b64, mime: file.type||'image/jpeg', previewUrl: ev.target.result });
+      res();
+    };
+    reader.readAsDataURL(file);
+  })));
+
+  // Sort by filename
+  batchPhotos.sort((a,b) => a.name.localeCompare(b.name));
+
+  // Show thumbnails
+  document.getElementById('thumbArea').style.display = 'block';
+  document.getElementById('thumbGrid').innerHTML = batchPhotos.map((_,i) => `
+    <div class="thumb-wrap" id="tw-${i}">
+      <img class="thumb" src="${batchPhotos[i].previewUrl}" alt="${batchPhotos[i].name}">
+      <div class="thumb-status pending" id="ts-${i}">·</div>
+    </div>`).join('');
+
+  document.getElementById('batchBox').classList.add('loaded');
+  document.getElementById('batchBadge').innerHTML =
+    `<div class="upload-badge">✓ ${batchPhotos.length} photos selected</div>`;
+
+  updateBtn();
+  showToast(`✓ ${batchPhotos.length} photos ready`);
+}
+
+function updateBtn() {
+  document.getElementById('checkBtn').disabled = !(batchPhotos.length > 0 && gToken);
+}
+
+// ══ BATCH AI CHECK ═══════════════════════════════════════
+async function runBatchCheck() {
+  const apiKey = localStorage.getItem('qc_apikey');
+  if (!apiKey) { showToast('⚠ Add API key in Settings'); goTab('settings'); return; }
+  if (!allFiles.length) { showToast('⚠ No master files loaded. Sign in to Google Drive.'); return; }
+
+  const total = batchPhotos.length;
+
+  document.getElementById('checkBtn').disabled = true;
+  document.getElementById('batchProgress').style.display = 'block';
+  document.getElementById('resultArea').innerHTML = '';
+
+  const results = [];
+
+  for (let i = 0; i < total; i++) {
+    const photo = batchPhotos[i];
+
+    setThumbStatus(i, 'checking', '⏳');
+    setProgress(Math.round((i/total)*100), `Checking photo ${i+1} of ${total}: ${photo.name}`);
+    document.getElementById('progCounter').textContent = `${i+1} / ${total}`;
+
+    try {
+      // Step 1: Identify product + match to master file
+      const matchPrompt = `You are a product matching expert. Look at this product label photo.
+
+Available master Word files:
+${allFiles.map((f,idx) => `${idx}: ${f.name}`).join('\n')}
+
+Which master file number best matches this product label?
+Also read the LOT number / 批号 directly from the label if visible.
+
+Return ONLY raw JSON:
+{
+  "file_index": 0,
+  "confidence": "HIGH or MEDIUM or LOW",
+  "product_name_zh": "Chinese product name from label",
+  "product_name_en": "English product name from label",
+  "lot_on_label": "LOT or 批号 number visible on label, or null if not visible"
+}`;
+
+      const matchResp = await callClaude(apiKey, [
+        { type:'image', source:{ type:'base64', media_type:photo.mime, data:photo.b64 } },
+        { type:'text', text:matchPrompt }
+      ]);
+
+      const matchRaw    = matchResp.replace(/```json|```/g,'').trim();
+      const matchResult = JSON.parse(matchRaw.match(/\{[\s\S]*\}/)[0]);
+      const fileIdx     = Math.min(parseInt(matchResult.file_index)||0, allFiles.length-1);
+      const masterFile  = allFiles[fileIdx];
+      const detectedLot = matchResult.lot_on_label || '—';
+
+      // Step 2: Download matched master file
+      const fileB64 = await gDownload(masterFile.id);
+
+      // Step 3: Full comparison — LOT detected from photo
+      const checkPrompt = `You are a bilingual product label QC expert.
+Compare the PRODUCT LABEL PHOTO against the MASTER WORD DOCUMENT.
+The Word document is the SOURCE OF TRUTH.
+
+Master file: ${masterFile.name}
+LOT detected from label: ${detectedLot}
+
+Compare ALL visible fields including:
+- 中文产品名称 / Chinese product name
+- English product name
+- 中文描述 / Chinese description
+- English description
+- Barcode / 条形码
+- Net weight / 净重
+- LOT / 批号 (read directly from label)
+- 成分 / Ingredients (ZH & EN)
+- Expiry date / 有效期 if visible
+- Any other text on label
+
+Return ONLY raw JSON:
+{
+  "product_name_zh": "Chinese name from label",
+  "product_name_en": "English name from label",
+  "lot_on_label": "LOT number read from label",
+  "expiry_date": "expiry date if visible else null",
+  "overall": "PASS or FAIL",
+  "summary_zh": "一句话中文结果",
+  "summary_en": "one sentence English summary",
+  "fields": [
+    {
+      "field": "Field Name",
+      "field_zh": "字段名",
+      "label_value": "value on label",
+      "master_value": "value in Word file",
+      "status": "MATCH or MISMATCH or NOT_VISIBLE or NOT_IN_MASTER",
+      "note": "explanation if mismatch else empty string"
+    }
+  ]
+}`;
+
+      const checkResp = await callClaude(apiKey, [
+        { type:'image', source:{ type:'base64', media_type:photo.mime, data:photo.b64 } },
+        { type:'document', source:{ type:'base64', media_type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document', data:fileB64 } },
+        { type:'text', text:checkPrompt }
+      ]);
+
+      const checkRaw = checkResp.replace(/```json|```/g,'').trim();
+      const result   = JSON.parse(checkRaw.match(/\{[\s\S]*\}/)[0]);
+
+      setThumbStatus(i, result.overall==='PASS'?'pass':'fail', result.overall==='PASS'?'✓':'✗');
+
+      results.push({
+        photo,
+        masterFile: masterFile.name,
+        matchConfidence: matchResult.confidence,
+        result,
+        lot: result.lot_on_label || detectedLot
+      });
+
+      // Save to log
+      const entry = {
+        timestamp:       new Date().toISOString(),
+        product_name_zh: result.product_name_zh || masterFile.name,
+        product_name_en: result.product_name_en || '',
+        lot:             result.lot_on_label || detectedLot,
+        expiry_date:     result.expiry_date || '',
+        master_file:     masterFile.name,
+        overall:         result.overall,
+        summary_en:      result.summary_en || '',
+        mismatch_count:  (result.fields||[]).filter(f=>f.status==='MISMATCH').length
+      };
+      checkLog.unshift(entry);
+      localStorage.setItem('qc_log', JSON.stringify(checkLog.slice(0,2000)));
+
+    } catch(err) {
+      setThumbStatus(i,'fail','!');
+      results.push({ photo, masterFile:'Error', matchConfidence:'—', result:null, error:err.message, lot:'—' });
+    }
+  }
+
+  setProgress(100, `✓ All ${total} photos checked!`);
+  document.getElementById('progCounter').textContent = `${total} / ${total}`;
+  document.getElementById('checkBtn').disabled = false;
+
+  renderBatchResults(results);
+  const passCount = results.filter(r=>r.result?.overall==='PASS').length;
+  const failCount = results.filter(r=>r.result?.overall==='FAIL'||r.error).length;
+  showToast(`✓ Done! ${passCount} pass, ${failCount} fail`);
+}
+
+  document.getElementById('checkBtn').disabled = true;
+  document.getElementById('batchProgress').style.display = 'block';
+  document.getElementById('resultArea').innerHTML = '';
+
+  const results = [];
+
+  for (let i = 0; i < total; i++) {
+    const photo = batchPhotos[i];
+
+    // Update thumb status
+    setThumbStatus(i, 'checking', '⏳');
+    setProgress(Math.round((i/total)*100), `Checking photo ${i+1} of ${total}: ${photo.name}`);
+    document.getElementById('progCounter').textContent = `${i+1} / ${total}`;
+
+    try {
+      // Step 1: AI identifies the product from the photo + matches to master file
+      const matchPrompt = `You are a product matching expert. Look at this product label photo.
+
+These are the available master Word files:
+${allFiles.map((f,idx) => `${idx}: ${f.name}`).join('\n')}
+
+Which master file number best matches this product label? 
+Return ONLY a JSON object:
+{
+  "file_index": 0,
+  "confidence": "HIGH or MEDIUM or LOW",
+  "product_name_zh": "Chinese product name you see on label",
+  "product_name_en": "English product name you see on label"
+}`;
+
+      const matchResp = await callClaude(apiKey, [
+        { type:'image', source:{ type:'base64', media_type:photo.mime, data:photo.b64 } },
+        { type:'text', text:matchPrompt }
+      ]);
+
+      const matchRaw = matchResp.replace(/```json|```/g,'').trim();
+      const matchResult = JSON.parse(matchRaw.match(/\{[\s\S]*\}/)[0]);
+      const fileIdx = parseInt(matchResult.file_index);
+      const masterFile = allFiles[Math.min(fileIdx, allFiles.length-1)];
+
+      // Step 2: Download the matched master file
+      const fileB64 = await gDownload(masterFile.id);
+
+      // Step 3: Full comparison
+      const checkPrompt = `You are a bilingual product label QC expert.
+Compare the PRODUCT LABEL PHOTO against the MASTER WORD DOCUMENT.
+The Word document is the SOURCE OF TRUTH.
+
+Master file: ${masterFile.name}
+${lot ? `LOT: ${lot}` : ''}
+
+Compare ALL visible fields:
+- 中文产品名称 / Chinese product name
+- English product name
+- 中文描述 / Chinese description
+- English description
+- Barcode / 条形码
+- Net weight / 净重
+- Lot / 批号
+- 成分 / Ingredients (ZH & EN)
+
+Return ONLY raw JSON:
+{
+  "product_name_zh": "Chinese name from label",
+  "product_name_en": "English name from label",
+  "lot_on_label": "lot if visible else null",
+  "overall": "PASS or FAIL",
+  "summary_zh": "一句话中文结果",
+  "summary_en": "one sentence English summary",
+  "fields": [
+    { "field":"Field Name", "field_zh":"字段名", "label_value":"on label", "master_value":"in Word", "status":"MATCH or MISMATCH or NOT_VISIBLE", "note":"" }
+  ]
+}`;
+
+      const checkResp = await callClaude(apiKey, [
+        { type:'image', source:{ type:'base64', media_type:photo.mime, data:photo.b64 } },
+        { type:'document', source:{ type:'base64', media_type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document', data:fileB64 } },
+        { type:'text', text:checkPrompt }
+      ]);
+
+      const checkRaw = checkResp.replace(/```json|```/g,'').trim();
+      const result   = JSON.parse(checkRaw.match(/\{[\s\S]*\}/)[0]);
+
+      setThumbStatus(i, result.overall==='PASS'?'pass':'fail', result.overall==='PASS'?'✓':'✗');
+
+      results.push({
+        photo, masterFile: masterFile.name,
+        matchConfidence: matchResult.confidence,
+        result, lot: lot||result.lot_on_label||'—'
+      });
+
+      // Save to log
+      const entry = {
+        timestamp: new Date().toISOString(),
+        product_name_zh: result.product_name_zh || masterFile.name,
+        product_name_en: result.product_name_en || '',
+        lot: lot || result.lot_on_label || '—',
+        master_file: masterFile.name,
+        overall: result.overall,
+        summary_en: result.summary_en || '',
+        mismatch_count: (result.fields||[]).filter(f=>f.status==='MISMATCH').length
+      };
+      checkLog.unshift(entry);
+      localStorage.setItem('qc_log', JSON.stringify(checkLog.slice(0,2000)));
+
+    } catch(err) {
+      setThumbStatus(i,'fail','!');
+      results.push({ photo, masterFile:'Error', matchConfidence:'—', result:null, error:err.message, lot });
+    }
+  }
+
+  setProgress(100, `✓ All ${total} photos checked!`);
+  document.getElementById('progCounter').textContent = `${total} / ${total}`;
+  document.getElementById('checkBtn').disabled = false;
+
+  renderBatchResults(results);
+  showToast(`✓ Done! ${results.filter(r=>r.result?.overall==='PASS').length} pass, ${results.filter(r=>r.result?.overall==='FAIL').length} fail`);
+}
+
+async function callClaude(apiKey, content) {
+  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true'
+    },
+    body: JSON.stringify({ model:'claude-opus-4-5', max_tokens:1500, messages:[{role:'user',content}] })
+  });
+  const data = await resp.json();
+  if (data.error) throw new Error(data.error.message);
+  return data.content.map(b=>b.text||'').join('');
+}
+
+function setThumbStatus(i, cls, txt) {
+  const el = document.getElementById('ts-'+i);
+  if (el) { el.className='thumb-status '+cls; el.textContent=txt; }
+}
+
+function setProgress(pct, msg) {
+  document.getElementById('progFill').style.width = pct+'%';
+  document.getElementById('progLbl').textContent = msg;
+}
+
+// ══ RENDER BATCH RESULTS ════════════════════════════════
+function renderBatchResults(results) {
+  const passCount  = results.filter(r=>r.result?.overall==='PASS').length;
+  const failCount  = results.filter(r=>r.result?.overall==='FAIL'||r.error).length;
+  const total      = results.length;
+
+  let html = `
+    <div class="batch-summary">
+      <div class="batch-sum-head">
+        <div style="font-size:26px;">${failCount===0?'✅':'⚠️'}</div>
+        <div>
+          <div style="font-size:17px;font-weight:800;">Batch Check Complete</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px;">${total} photos checked</div>
+        </div>
+      </div>
+      <div class="batch-stats">
+        <div class="stat-pill stat-total">📋 ${total} Total</div>
+        <div class="stat-pill stat-pass">✓ ${passCount} Pass</div>
+        <div class="stat-pill stat-fail">✗ ${failCount} Fail</div>
+      </div>`;
+
+  // Show FAIL first, then PASS
+  const sorted = [...results].sort((a,b) => {
+    const oa = a.result?.overall==='PASS'?1:0;
+    const ob = b.result?.overall==='PASS'?1:0;
+    return oa - ob;
+  });
+
+  sorted.forEach((r, i) => {
+    const pass   = r.result?.overall==='PASS';
+    const mis    = (r.result?.fields||[]).filter(f=>f.status==='MISMATCH').length;
+    const bdgCls = pass ? 'badge-pass' : 'badge-fail';
+    const bdgTxt = pass ? 'PASS ✓' : (r.error ? 'ERROR' : `FAIL ✗ (${mis})`);
+
+    const fieldsHtml = (r.result?.fields||[]).map(f => {
+      const dc = f.status==='MATCH'?'dot-ok':f.status==='MISMATCH'?'dot-fail':'dot-warn';
+      return `<div class="field-row" style="padding:8px 0;">
+        <div class="f-dot ${dc}" style="margin-top:4px;"></div>
+        <div class="f-info">
+          <div class="f-name">${f.field}${f.field_zh?' / '+f.field_zh:''}</div>
+          <div class="f-val">${f.label_value||'—'}</div>
+          ${f.master_value&&f.master_value!==f.label_value?`<div class="f-master">✦ Master: ${f.master_value}</div>`:''}
+          ${f.note?`<div class="f-note">⚠ ${f.note}</div>`:''}
+        </div>
+      </div>`;
+    }).join('');
+
+    html += `
+      <div class="batch-item" onclick="toggleDetail(${i})">
+        <div class="batch-item-top">
+          <img class="batch-thumb-sm" src="${r.photo.previewUrl}" alt="">
+          <div class="batch-item-info">
+            <div class="batch-item-name">${r.result?.product_name_zh || r.photo.name}</div>
+            <div class="batch-item-en">${r.result?.product_name_en||''}</div>
+            <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px;">
+              LOT: ${r.lot} · ${r.masterFile}
+            </div>
+          </div>
+          <div class="batch-item-badge r-badge ${bdgCls}">${bdgTxt}</div>
+        </div>
+        ${r.result?.summary_zh ? `<div style="font-size:12px;color:var(--muted);margin-top:4px;line-height:1.5;">${r.result.summary_zh}</div>` : ''}
+        ${r.error ? `<div style="font-size:12px;color:var(--red);margin-top:4px;">Error: ${r.error}</div>` : ''}
+        <div class="batch-detail" id="bd-${i}">
+          ${fieldsHtml}
+        </div>
+        <div style="font-size:11px;color:var(--muted);text-align:right;margin-top:6px;">tap to ${''} see details ▾</div>
+      </div>`;
+  });
+
+  html += '</div>';
+  document.getElementById('resultArea').innerHTML = html;
+}
+
+function toggleDetail(i) {
+  const el = document.getElementById('bd-'+i);
+  el.classList.toggle('open');
+}
+
+// ══ GOOGLE API ════════════════════════════════════════════
+async function gFetch(url) {
+  const r = await fetch(url,{headers:{Authorization:'Bearer '+gToken}});
+  if(r.status===401){gToken=null;sessionStorage.removeItem('gtoken');setPill('off','● Sign in again');throw new Error('Session expired. Please sign in again.');}
+  if(!r.ok) throw new Error('Drive API error: '+r.status);
+  return r.json();
+}
+
+async function gDownload(fileId) {
+  const r = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,{headers:{Authorization:'Bearer '+gToken}});
+  if(!r.ok) throw new Error('Cannot download file');
+  const blob = await r.blob();
+  return new Promise((res,rej)=>{
+    const reader=new FileReader();
+    reader.onload=()=>res(reader.result.split(',')[1]);
+    reader.onerror=rej;
+    reader.readAsDataURL(blob);
+  });
+}
+
+// ══ LOG ══════════════════════════════════════════════════
+function loadLog(){const raw=localStorage.getItem('qc_log');checkLog=raw?JSON.parse(raw):[];}
+function renderLog(){
+  const el=document.getElementById('logList');
+  if(!checkLog.length){el.innerHTML='<div class="log-empty">No checks yet.<br>Go to Scan tab to start. 📷</div>';return;}
+  el.innerHTML=checkLog.map(e=>{
+    const pass=e.overall==='PASS';
+    const dt=new Date(e.timestamp);
+    const ds=dt.toLocaleDateString('zh-CN')+' '+dt.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});
+    return `<div class="log-item">
+      <div class="log-top"><div class="log-name">${e.product_name_zh||e.master_file}</div>
+      <div class="log-bdg ${pass?'bdg-ok':'bdg-fail'}">${pass?'PASS ✓':'FAIL ✗'}</div></div>
+      ${e.product_name_en?`<div class="log-en">${e.product_name_en}</div>`:''}
+      <div class="log-meta">LOT: ${e.lot||'—'} · ${e.master_file}<br>${ds}${!pass?' · '+e.mismatch_count+' mismatch':''}</div>
+    </div>`;
+  }).join('');
+}
+function exportCSV(){
+  if(!checkLog.length){showToast('No log entries yet');return;}
+  const rows=[['Timestamp','Product (ZH)','Product (EN)','LOT','Master File','Result','Mismatches','Summary']];
+  checkLog.forEach(e=>rows.push([e.timestamp,e.product_name_zh||'',e.product_name_en||'',e.lot||'',e.master_file||'',e.overall||'',e.mismatch_count||0,e.summary_en||'']));
+  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}));
+  a.download=`qc_log_${new Date().toISOString().slice(0,10)}.csv`;a.click();showToast('✓ CSV exported');
+}
+function clearLog(){if(!confirm('Clear all log entries?'))return;checkLog=[];localStorage.removeItem('qc_log');renderLog();showToast('Log cleared');}
+
+// ══ SETTINGS ═════════════════════════════════════════════
+function loadSettings(){
+  document.getElementById('apiKey').value=localStorage.getItem('qc_apikey')||'';
+  document.getElementById('folderName').value=localStorage.getItem('qc_folder')||'registered product labels';
+}
+function saveApiKey(){const k=document.getElementById('apiKey').value.trim();localStorage.setItem('qc_apikey',k);showToast(k?'✓ API key saved':'Cleared');}
+function saveFolder(){const v=document.getElementById('folderName').value.trim();localStorage.setItem('qc_folder',v);showToast('✓ Saved');if(gToken)loadFiles();}
+
+// ══ TOAST ════════════════════════════════════════════════
+let _tt;
+function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(_tt);_tt=setTimeout(()=>el.classList.remove('show'),2800);}
+
+// ══ STATE ═══════════════════════════════════════════════
+let gToken      = null;
+let allFiles    = [];   // all drive files
+let filteredFiles = [];
+let selectedIdx = null;
+let photoB64    = null;
+let photoMime   = 'image/jpeg';
+let checkLog    = [];
+
+// ══ INIT ════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  loadSettings();
+  loadLog();
+  renderLog();
+  // Restore session token
+  const t = sessionStorage.getItem('gtoken');
+  if (t) { gToken = t; onSignedIn(); }
+});
+
+// ══ TABS ════════════════════════════════════════════════
+function goTab(n) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  ['scan','log','settings'].forEach((name,i)=>{
+    if(name===n){ document.querySelectorAll('.tab')[i].classList.add('active'); document.getElementById('page-'+name).classList.add('active'); }
+  });
+  if(n==='log') renderLog();
+}
+
+// ══ GOOGLE SIGN IN ═══════════════════════════════════════
+function signIn() {
+  try {
+    const client = google.accounts.oauth2.initTokenClient({
+      client_id: CLIENT_ID,
+      scope: SCOPES,
+      callback: (resp) => {
+        if (resp.error) { showToast('❌ Sign in failed: ' + resp.error); return; }
+        gToken = resp.access_token;
+        sessionStorage.setItem('gtoken', gToken);
+        onSignedIn();
+      }
+    });
+    client.requestAccessToken();
+  } catch(e) {
+    showToast('❌ Google sign-in error. Check internet connection.');
+  }
+}
+
+function onSignedIn() {
+  // Update UI
+  document.getElementById('notConnected').style.display = 'none';
+  document.getElementById('connectedArea').style.display = 'block';
+  document.getElementById('drivePill').textContent = '● Drive Connected';
+  document.getElementById('drivePill').className = 'drive-pill on';
+  document.getElementById('driveStatusCard').innerHTML =
+    '<div style="font-size:13px;color:var(--green);font-weight:600;">✓ Google Drive connected</div>';
+  loadFiles();
+}
+
+// ══ LOAD FILES FROM DRIVE ════════════════════════════════
+async function loadFiles() {
+  if (!gToken) { showToast('Sign in first'); return; }
+  const folder = localStorage.getItem('qc_folder') || 'Labels';
+  setPill('busy', '● Loading...');
+  document.getElementById('masterList').innerHTML =
+    '<div class="list-empty">⏳ Loading from Google Drive...</div>';
+
+  try {
+    // Find folder
+    const fRes = await gFetch(`https://www.googleapis.com/drive/v3/files?q=name='${encodeURIComponent(folder)}' and mimeType='application/vnd.google-apps.folder' and trashed=false&fields=files(id,name)`);
+
+    if (!fRes.files?.length) {
+      document.getElementById('masterList').innerHTML =
+        `<div class="list-empty">❌ Folder "<b>${folder}</b>" not found.<br>Check folder name in Settings.</div>`;
+      setPill('on','● Drive Connected'); return;
+    }
+
+    const fid = fRes.files[0].id;
+
+    // List Word files
+    const lRes = await gFetch(`https://www.googleapis.com/drive/v3/files?q='${fid}' in parents and trashed=false and (name contains '.docx' or name contains '.doc')&fields=files(id,name,modifiedTime)&orderBy=name`);
+
+    allFiles = lRes.files || [];
+    filteredFiles = [...allFiles];
+
+    if (allFiles.length > 5) {
+      document.getElementById('searchInput').style.display = 'block';
+    }
+
+    renderList();
+    setPill('on','● Drive Connected');
+    showToast(`✓ ${allFiles.length} files loaded`);
+
+  } catch(e) {
+    document.getElementById('masterList').innerHTML =
+      `<div class="list-empty">❌ ${e.message}<br><br>Try signing in again.</div>`;
+    setPill('off','● Drive Error');
+  }
+}
+
+function setPill(cls, txt) {
+  const p = document.getElementById('drivePill');
+  p.className = 'drive-pill ' + cls;
+  p.textContent = txt;
+}
+
+function filterList() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  filteredFiles = allFiles.filter(f => f.name.toLowerCase().includes(q));
+  selectedIdx = null;
+  renderList();
+  updateBtn();
+}
+
+function renderList() {
+  const el = document.getElementById('masterList');
+  if (!filteredFiles.length) {
+    el.innerHTML = '<div class="list-empty">No files found.</div>'; return;
+  }
+  el.innerHTML = filteredFiles.map((f,i) => `
+    <div class="master-item ${selectedIdx===i?'selected':''}" onclick="selectFile(${i})">
+      <div class="m-dot"></div>
+      <div class="m-name">${f.name.replace(/\.(docx|doc)$/i,'')}</div>
+      <div class="m-date">${f.modifiedTime?f.modifiedTime.slice(0,10):''}</div>
+    </div>`).join('');
+}
+
+function selectFile(i) {
+  selectedIdx = i;
+  renderList();
+  updateBtn();
+  showToast('✓ ' + filteredFiles[i].name.replace(/\.(docx|doc)$/i,''));
+}
+
+// ══ PHOTO ════════════════════════════════════════════════
+function handlePhoto(e) {
+  const file = e.target.files[0]; if (!file) return;
+  photoMime = file.type || 'image/jpeg';
+  const reader = new FileReader();
+  reader.onload = ev => {
+    photoB64 = ev.target.result.split(',')[1];
+    document.getElementById('prevImg').src = ev.target.result;
+    document.getElementById('prevImg').style.display = 'block';
+    document.getElementById('camPh').style.display = 'none';
+    document.getElementById('camBox').classList.add('has-img');
+    updateBtn();
+  };
+  reader.readAsDataURL(file);
+}
+
+function updateBtn() {
+  document.getElementById('checkBtn').disabled = !(selectedIdx !== null && photoB64);
+}
+
+// ══ GOOGLE API HELPER ════════════════════════════════════
+async function gFetch(url) {
+  const r = await fetch(url, { headers: { Authorization: 'Bearer ' + gToken } });
+  if (r.status === 401) { gToken = null; sessionStorage.removeItem('gtoken'); setPill('off','● Drive Connected'); throw new Error('Session expired. Please sign in again.'); }
+  if (!r.ok) throw new Error('Drive API error: ' + r.status);
+  return r.json();
+}
+
+async function gDownload(fileId) {
+  const r = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+    headers: { Authorization: 'Bearer ' + gToken }
+  });
+  if (!r.ok) throw new Error('Cannot download file');
+  const blob = await r.blob();
+  return new Promise((res,rej) => {
+    const reader = new FileReader();
+    reader.onload = () => res(reader.result.split(',')[1]);
+    reader.onerror = rej;
+    reader.readAsDataURL(blob);
+  });
+}
+
+// ══ AI CHECK ═════════════════════════════════════════════
+async function runCheck() {
+  const apiKey = localStorage.getItem('qc_apikey');
+  if (!apiKey) { showToast('⚠ Add API key in Settings'); goTab('settings'); return; }
+
+  const file = filteredFiles[selectedIdx];
+  const lot  = document.getElementById('lotInput').value.trim();
+
+  document.getElementById('checkBtn').disabled = true;
+  document.getElementById('progWrap').style.display = 'block';
+  document.getElementById('resultArea').innerHTML = '';
+
+  try {
+    setProgress(15, 'Downloading master file from Drive...');
+    const fileB64 = await gDownload(file.id);
+
+    setProgress(40, 'Sending to Claude AI...');
+
+    const prompt = `You are a bilingual product label QC expert.
+
+Compare the PRODUCT LABEL PHOTO against the MASTER WORD DOCUMENT.
+The Word document is the SOURCE OF TRUTH.
+
+Master file: ${file.name}
+${lot ? `LOT entered: ${lot}` : ''}
+
+Extract from the photo and compare ALL visible fields:
+- 中文产品名称 / Chinese product name
+- English product name
+- 中文描述 / Chinese description
+- English description
+- Barcode / 条形码
+- Net weight / 净重
+- Lot / 批号
+- 成分 / Ingredients (ZH)
+- Ingredients (EN)
+- Any other text on label
+
+Return ONLY raw JSON:
+{
+  "product_name_zh": "Chinese name from label",
+  "product_name_en": "English name from label",
+  "lot_on_label": "lot if visible else null",
+  "overall": "PASS or FAIL",
+  "summary_zh": "一句话中文结果",
+  "summary_en": "one sentence English summary",
+  "fields": [
+    {
+      "field": "Field Name",
+      "field_zh": "字段名",
+      "label_value": "value on label",
+      "master_value": "value in Word file",
+      "status": "MATCH or MISMATCH or NOT_VISIBLE or NOT_IN_MASTER",
+      "note": "explanation if mismatch else empty string"
+    }
+  ]
+}`;
+
+    setProgress(60, 'AI comparing label with master...');
+
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-opus-4-5',
+        max_tokens: 1500,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: photoMime, data: photoB64 } },
+            { type: 'document', source: { type: 'base64', media_type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', data: fileB64 } },
+            { type: 'text', text: prompt }
+          ]
+        }]
+      })
+    });
+
+    setProgress(85, 'Processing results...');
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error.message);
+
+    const raw    = data.content.map(b=>b.text||'').join('').replace(/```json|```/g,'').trim();
+    const result = JSON.parse(raw.match(/\{[\s\S]*\}/)[0]);
+    setProgress(100, 'Done ✓');
+
+    // Save log
+    const entry = {
+      timestamp:       new Date().toISOString(),
+      product_name_zh: result.product_name_zh || file.name,
+      product_name_en: result.product_name_en || '',
+      lot:             lot || result.lot_on_label || '—',
+      master_file:     file.name,
+      overall:         result.overall,
+      summary_en:      result.summary_en || '',
+      mismatch_count:  (result.fields||[]).filter(f=>f.status==='MISMATCH').length
+    };
+    checkLog.unshift(entry);
+    localStorage.setItem('qc_log', JSON.stringify(checkLog.slice(0,2000)));
+
+    renderResult(result, lot, file.name);
+    showToast(result.overall==='PASS' ? '✅ PASS!' : '❌ FAIL — mismatches found!');
+
+  } catch(e) {
+    setProgress(0,'');
+    document.getElementById('resultArea').innerHTML = `
+      <div class="result-card" style="border-left:4px solid var(--red)">
+        <div class="result-head">
+          <div class="r-icon">❌</div>
+          <div><div class="r-name-zh">Error</div>
+          <div style="font-size:13px;color:var(--red);margin-top:4px;">${e.message}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:8px;line-height:1.6;">Check API key in Settings.<br>Make sure you have credit at console.anthropic.com</div>
+          </div>
+        </div></div>`;
+  } finally {
+    document.getElementById('checkBtn').disabled = false;
+    document.getElementById('progWrap').style.display = 'none';
+  }
+}
+
+function setProgress(pct, msg) {
+  document.getElementById('progFill').style.width = pct+'%';
+  document.getElementById('progLbl').textContent = msg;
+}
+
+function renderResult(result, lot, fileName) {
+  const pass = result.overall==='PASS';
+  const mis  = (result.fields||[]).filter(f=>f.status==='MISMATCH').length;
+  const fHtml = (result.fields||[]).map(f => {
+    const dc = f.status==='MATCH'?'dot-ok':f.status==='MISMATCH'?'dot-fail':'dot-warn';
+    return `<div class="field-row">
+      <div class="f-dot ${dc}"></div>
+      <div class="f-info">
+        <div class="f-name">${f.field}${f.field_zh?' / '+f.field_zh:''}</div>
+        <div class="f-val">${f.label_value||'—'}</div>
+        ${f.master_value&&f.master_value!==f.label_value?`<div class="f-master">✦ Master: ${f.master_value}</div>`:''}
+        ${f.note?`<div class="f-note">⚠ ${f.note}</div>`:''}
+      </div></div>`;
+  }).join('');
+
+  document.getElementById('resultArea').innerHTML = `
+    <div class="result-card">
+      <div class="result-head">
+        <div class="r-icon">${pass?'✅':'❌'}</div>
+        <div style="flex:1;">
+          <div class="r-name-zh">${result.product_name_zh||fileName}</div>
+          <div class="r-name-en">${result.product_name_en||''}</div>
+          ${lot?`<div class="r-lot">LOT: ${lot}</div>`:''}
+          <div class="r-badge ${pass?'badge-pass':'badge-fail'}">${pass?'✓ PASS — All correct':'✗ FAIL — '+mis+' mismatch'+(mis>1?'es':'')}</div>
+          <div class="r-summary">${result.summary_zh||''}<br>${result.summary_en||''}</div>
+        </div>
+      </div>
+      <div class="field-list">${fHtml}</div>
+    </div>`;
+}
+
+// ══ LOG ══════════════════════════════════════════════════
+function loadLog() {
+  const raw = localStorage.getItem('qc_log');
+  checkLog = raw ? JSON.parse(raw) : [];
+}
+
+function renderLog() {
+  const el = document.getElementById('logList');
+  if (!checkLog.length) { el.innerHTML='<div class="log-empty">No checks yet.<br>Go to Scan tab to start. 📷</div>'; return; }
+  el.innerHTML = checkLog.map(e => {
+    const pass = e.overall==='PASS';
+    const dt   = new Date(e.timestamp);
+    const ds   = dt.toLocaleDateString('zh-CN')+' '+dt.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});
+    return `<div class="log-item">
+      <div class="log-top">
+        <div class="log-name">${e.product_name_zh||e.master_file}</div>
+        <div class="log-bdg ${pass?'bdg-ok':'bdg-fail'}">${pass?'PASS ✓':'FAIL ✗'}</div>
+      </div>
+      ${e.product_name_en?`<div class="log-en">${e.product_name_en}</div>`:''}
+      <div class="log-meta">LOT: ${e.lot||'—'} · ${e.master_file}<br>${ds}${!pass?' · '+e.mismatch_count+' mismatch':''}</div>
+    </div>`;
+  }).join('');
+}
+
+function exportCSV() {
+  if (!checkLog.length) { showToast('No log entries yet'); return; }
+  const rows=[['Timestamp','Product (ZH)','Product (EN)','LOT','Master File','Result','Mismatches','Summary']];
+  checkLog.forEach(e=>rows.push([e.timestamp,e.product_name_zh||'',e.product_name_en||'',e.lot||'',e.master_file||'',e.overall||'',e.mismatch_count||0,e.summary_en||'']));
+  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}));
+  a.download=`qc_log_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  showToast('✓ CSV exported');
+}
+
+function clearLog() {
+  if(!confirm('Clear all log entries?')) return;
+  checkLog=[]; localStorage.removeItem('qc_log'); renderLog(); showToast('Log cleared');
+}
+
+// ══ SETTINGS ═════════════════════════════════════════════
+function loadSettings() {
+  document.getElementById('apiKey').value    = localStorage.getItem('qc_apikey')||'';
+  document.getElementById('folderName').value = localStorage.getItem('qc_folder')||'Labels';
+}
+
+function saveApiKey() {
+  const k=document.getElementById('apiKey').value.trim();
+  localStorage.setItem('qc_apikey',k);
+  showToast(k?'✓ API key saved':'API key cleared');
+}
+
+function saveFolder() {
+  const v=document.getElementById('folderName').value.trim();
+  localStorage.setItem('qc_folder',v);
+  showToast('✓ Saved — reloading...');
+  if(gToken) loadFiles();
+}
+
+// ══ TOAST ════════════════════════════════════════════════
+let _tt;
+function showToast(msg) {
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('show');
+  clearTimeout(_tt); _tt=setTimeout(()=>el.classList.remove('show'),2800);
+}
+</script>
+</body>
+</html>
