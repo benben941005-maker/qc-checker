@@ -291,60 +291,95 @@ async function runBatch(){
   for(let i=0;i<total;i++){
     const photo=batchPhotos[i];
     setThumb(i,'ts-c','⏳');
-    setProgress(Math.round(i/total*100),`Checking ${i+1} of ${total}...`);
+    setProgress(Math.round(i/total*100),`Checking photo ${i+1} of ${total}...`);
     document.getElementById('progCount').textContent=`${i+1}/${total}`;
     try{
-      const mRaw=await claude(apiKey,[
+      // Step 1: Detect ALL products visible in this photo
+      const detectRaw=await claude(apiKey,[
         {type:'image',source:{type:'base64',media_type:photo.mime,data:photo.b64}},
-        {type:'text',text:`Match this label photo to the best master file below.\nFiles:\n${allFiles.map((f,idx)=>`${idx}: ${f.name}`).join('\n')}\nReturn ONLY JSON: {"file_index":0,"product_name_zh":"","product_name_en":"","lot_on_label":"or null"}`}
+        {type:'text',text:`Look at this photo carefully. It may show ONE or MULTIPLE product labels.
+For EACH product label visible, READ THE TEXT DIRECTLY FROM THE LABEL IMAGE:
+- Chinese product name (中文名称) — read exactly from label
+- English product name — read exactly from label  
+- LOT number / 批号 — read exactly from label
+- Expiry date / 有效期 — read exactly from label
+
+Available master files to match:
+${allFiles.map((f,idx)=>`${idx}: ${f.name}`).join('\n')}
+
+Return ONLY raw JSON array — one entry per product found:
+[{"file_index":0,"product_name_zh":"EXACT Chinese name from label","product_name_en":"EXACT English name from label","lot_on_label":"EXACT LOT from label or null","expiry_date":"EXACT expiry from label or null"}]
+If only one product, still return as array with one item.`}
       ]);
-      const m=JSON.parse(mRaw.replace(/```json|```/g,'').trim().match(/\{[\s\S]*\}/)[0]);
-      const mf=allFiles[Math.min(parseInt(m.file_index)||0,allFiles.length-1)];
-      const arrayBuffer=await gDownload(mf.id);
-      const docText=await extractDocxText(arrayBuffer);
-      const cRaw=await claude(apiKey,[
-        {type:'image',source:{type:'base64',media_type:photo.mime,data:photo.b64}},
-        {type:'text',text:`You are a bilingual product label QC expert.
-Compare the PHOTO against this MASTER WORD DOCUMENT content (source of truth).
+      let products=[];
+      try{
+        const cleaned=detectRaw.replace(/```json|```/g,'').trim();
+        const arr=cleaned.match(/\[[\s\S]*\]/);
+        products=arr?JSON.parse(arr[0]):[];
+      }catch(e){products=[];}
+      if(!products.length)products=[{file_index:0,product_name_zh:'',product_name_en:'',lot_on_label:null,expiry_date:null}];
+
+      // Step 2: For each product found, do full comparison
+      const photoResults=[];
+      for(let p=0;p<products.length;p++){
+        const prod=products[p];
+        const mf=allFiles[Math.min(parseInt(prod.file_index)||0,allFiles.length-1)];
+        const arrayBuffer=await gDownload(mf.id);
+        const docText=await extractDocxText(arrayBuffer);
+        const cRaw=await claude(apiKey,[
+          {type:'image',source:{type:'base64',media_type:photo.mime,data:photo.b64}},
+          {type:'text',text:`You are a bilingual product QC expert.
+This photo may contain multiple products. Focus ONLY on this specific product: "${prod.product_name_zh||prod.product_name_en||mf.name}"
+
+Compare it against this MASTER WORD DOCUMENT (source of truth).
 Master file: ${mf.name}
 
 MASTER DOCUMENT TEXT:
 ---
-${docText||'(Could not extract text — use filename as reference: '+mf.name+')'}
+${docText||'(use filename: '+mf.name+')'}
 ---
 
-Check ALL fields visible on label vs master:
+Check ALL fields for this specific product:
 - 中文产品名称 / Chinese product name
 - English product name
 - 中文描述 / Chinese description
 - English description
 - Barcode / 条形码
 - Net weight / 净重
-- LOT / 批号 (read from label image)
-- Expiry date / 有效期 (read from label image)
-- 成分 / Ingredients (ZH & EN)
+- LOT / 批号
+- Expiry date / 有效期
+- 成分 / Ingredients
 
 Return ONLY raw JSON:
-{"product_name_zh":"","product_name_en":"","lot_on_label":"","expiry_date":"","overall":"PASS or FAIL","summary_zh":"一句话","summary_en":"one sentence","fields":[{"field":"","field_zh":"","label_value":"","master_value":"","status":"MATCH or MISMATCH or NOT_VISIBLE","note":""}]}`}
-      ]);
-      const result=JSON.parse(cRaw.replace(/```json|```/g,'').trim().match(/\{[\s\S]*\}/)[0]);
-      setThumb(i,result.overall==='PASS'?'ts-ok':'ts-no',result.overall==='PASS'?'✓':'✗');
-      results.push({photo,mf:mf.name,result});
-      checkLog.unshift({
-        timestamp:new Date().toISOString(),
-        product_name_zh:result.product_name_zh||mf.name,
-        product_name_en:result.product_name_en||'',
-        lot:result.lot_on_label||'—',
-        expiry:result.expiry_date||'',
-        master_file:mf.name,
-        overall:result.overall,
-        summary_en:result.summary_en||'',
-        mismatch_count:(result.fields||[]).filter(f=>f.status==='MISMATCH').length
-      });
+{"product_name_zh":"READ FROM PHOTO LABEL — exact Chinese name printed on label","product_name_en":"READ FROM PHOTO LABEL — exact English name printed on label","lot_on_label":"READ FROM PHOTO LABEL — exact LOT/批号 printed on label or null","expiry_date":"READ FROM PHOTO LABEL — exact expiry date printed on label or null","overall":"PASS or FAIL","summary_zh":"一句话","summary_en":"one sentence","fields":[{"field":"","field_zh":"","label_value":"exact text from photo","master_value":"text from Word document","status":"MATCH or MISMATCH or NOT_VISIBLE","note":""}]}`}
+        ]);
+        const result=JSON.parse(cRaw.replace(/```json|```/g,'').trim().match(/\{[\s\S]*\}/)[0]);
+        photoResults.push({photo,mf:mf.name,result,productIndex:p,totalProducts:products.length});
+
+        // Log each product as separate entry
+        checkLog.unshift({
+          timestamp:new Date().toISOString(),
+          product_name_zh:result.product_name_zh||prod.product_name_zh||mf.name,
+          product_name_en:result.product_name_en||prod.product_name_en||'',
+          lot:result.lot_on_label||prod.lot_on_label||'—',
+          expiry:result.expiry_date||prod.expiry_date||'',
+          master_file:mf.name,
+          photo_name:photo.name,
+          overall:result.overall,
+          summary_en:result.summary_en||'',
+          mismatch_count:(result.fields||[]).filter(f=>f.status==='MISMATCH').length
+        });
+      }
       localStorage.setItem('qc_log',JSON.stringify(checkLog.slice(0,2000)));
+
+      // Thumb: fail if any product fails
+      const anyFail=photoResults.some(r=>r.result?.overall!=='PASS');
+      setThumb(i,anyFail?'ts-no':'ts-ok',anyFail?'✗':'✓');
+      results.push(...photoResults);
+
     }catch(err){
       setThumb(i,'ts-no','!');
-      results.push({photo,mf:'—',result:null,error:err.message});
+      results.push({photo,mf:'—',result:null,error:err.message,productIndex:0,totalProducts:1});
     }
   }
   setProgress(100,'✓ All done!');
@@ -365,7 +400,7 @@ function renderResults(results){
   let html=`<div class="batch-summary">
     <div class="sum-head"><div style="font-size:26px;">${fail===0?'✅':'⚠️'}</div>
     <div><div style="font-size:17px;font-weight:800;">Batch Complete</div>
-    <div style="font-size:12px;color:var(--muted);">${results.length} photos checked</div></div></div>
+    <div style="font-size:12px;color:var(--muted);">${results.length} products checked</div></div></div>
     <div class="batch-stats">
       <div class="stat s-all">📋 ${results.length}</div>
       <div class="stat s-ok">✓ ${pass} Pass</div>
@@ -374,6 +409,7 @@ function renderResults(results){
   results.forEach((r,i)=>{
     const ok=r.result?.overall==='PASS';
     const mis=(r.result?.fields||[]).filter(f=>f.status==='MISMATCH').length;
+    const multiLabel=r.totalProducts>1?` <span style="font-size:10px;background:#e6f4ff;color:#1677ff;padding:2px 6px;border-radius:8px;font-weight:600;">Product ${(r.productIndex||0)+1}/${r.totalProducts}</span>`:'';
     const fields=(r.result?.fields||[]).map(f=>{
       const dc=f.status==='MATCH'?'dok':f.status==='MISMATCH'?'dno':'dwarn';
       return `<div class="frow"><div class="fdot ${dc}"></div><div>
@@ -387,9 +423,12 @@ function renderResults(results){
       <div class="b-top">
         <img class="b-thumb" src="${r.photo.url}">
         <div style="flex:1;min-width:0;">
-          <div class="b-name">${r.result?.product_name_zh||r.photo.name}</div>
+          <div class="b-name">${r.result?.product_name_zh||r.mf}${multiLabel}</div>
           <div class="b-en">${r.result?.product_name_en||''}</div>
-          <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px;">LOT: ${r.result?.lot_on_label||'—'}${r.result?.expiry_date?' · Exp: '+r.result.expiry_date:''}</div>
+          <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px;">
+            LOT: ${r.result?.lot_on_label||'—'}${r.result?.expiry_date?' · Exp: '+r.result.expiry_date:''}
+          </div>
+          <div style="font-size:10px;color:var(--muted);margin-top:1px;">📷 ${r.photo.name}</div>
         </div>
         <div class="badge ${ok?'b-pass':'b-fail'}">${ok?'PASS ✓':`FAIL ✗${mis?' ('+mis+')':''}`}</div>
       </div>
@@ -449,7 +488,7 @@ function renderLog(){
       <div class="log-top"><div class="log-name">${e.product_name_zh||e.master_file}</div>
       <div class="log-bdg ${ok?'bok':'bno'}">${ok?'PASS ✓':'FAIL ✗'}</div></div>
       ${e.product_name_en?`<div style="font-size:12px;color:var(--muted);">${e.product_name_en}</div>`:''}
-      <div class="log-meta">LOT: ${e.lot||'—'}${e.expiry?' · Exp: '+e.expiry:''}<br>${e.master_file} · ${ds}${!ok?' · '+e.mismatch_count+' mismatch':''}</div>
+      <div class="log-meta">LOT: ${e.lot||'—'}${e.expiry?' · Exp: '+e.expiry:''}<br>${e.master_file}${e.photo_name?' · 📷 '+e.photo_name:''} · ${ds}${!ok?' · '+e.mismatch_count+' mismatch':''}</div>
     </div>`;
   }).join('');
 }
