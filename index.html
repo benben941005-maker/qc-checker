@@ -137,8 +137,19 @@ body{font-family:'Sora','Noto Sans SC',sans-serif;background:var(--paper);color:
     <input type="file" id="batchInput" accept="image/*" multiple onchange="handleBatch(event)">
     <div class="upload-icon">📷</div>
     <div class="upload-label">Tap to select photos</div>
-    <div class="upload-sub">Pick all label photos at once — AI checks each automatically</div>
+    <div class="upload-sub">iPhone: select multiple photos &nbsp;|&nbsp; Computer: select files or whole folder</div>
     <div id="batchBadge"></div>
+  </div>
+  <!-- Folder upload for computer -->
+  <div class="upload-box" id="folderBox" style="padding:12px 16px;">
+    <input type="file" id="folderInput" webkitdirectory multiple accept="image/*" onchange="handleBatch(event)">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div style="font-size:24px;">📁</div>
+      <div>
+        <div style="font-size:13px;font-weight:700;">Upload whole folder (Computer only)</div>
+        <div style="font-size:11px;color:var(--muted);">Select a folder — all images inside load at once</div>
+      </div>
+    </div>
   </div>
 
   <div id="thumbArea" style="display:none;margin-bottom:12px;">
