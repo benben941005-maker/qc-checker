@@ -133,21 +133,31 @@ body{font-family:'Sora','Noto Sans SC',sans-serif;background:var(--paper);color:
   </div>
 
   <div class="slabel" style="margin-top:16px;"><span class="step-num">2</span> Select Label Photos</div>
-  <div class="upload-box" id="batchBox">
+  <div class="upload-box" id="batchBox" id="dropZone">
     <input type="file" id="batchInput" accept="image/*" multiple onchange="handleBatch(event)">
     <div class="upload-icon">📷</div>
-    <div class="upload-label">Tap to select photos</div>
-    <div class="upload-sub">iPhone: select multiple photos &nbsp;|&nbsp; Computer: select files or whole folder</div>
+    <div class="upload-label">Click to select images</div>
+    <div class="upload-sub">iPhone: select multiple photos &nbsp;|&nbsp; Computer: select multiple image files</div>
     <div id="batchBadge"></div>
   </div>
-  <!-- Folder upload for computer -->
-  <div class="upload-box" id="folderBox" style="padding:12px 16px;">
-    <input type="file" id="folderInput" webkitdirectory multiple accept="image/*" onchange="handleBatch(event)">
-    <div style="display:flex;align-items:center;gap:10px;">
-      <div style="font-size:24px;">📁</div>
+
+  <!-- Drag & Drop zone for computer — supports multiple folders -->
+  <div id="dropZone" style="border:2.5px dashed var(--border);border-radius:var(--r);padding:24px 16px;text-align:center;background:var(--card);box-shadow:var(--shadow);margin-bottom:10px;transition:all 0.2s;"
+    ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropFiles(event)">
+    <div style="font-size:32px;margin-bottom:8px;">📁</div>
+    <div style="font-size:14px;font-weight:700;margin-bottom:3px;">Drag &amp; Drop folders here</div>
+    <div style="font-size:12px;color:var(--muted);">Drag one or multiple folders from your computer<br>All images inside will be loaded automatically</div>
+  </div>
+
+  <div style="text-align:center;font-size:11px;color:var(--muted);margin:-4px 0 8px;">— or use folder picker (Chrome/Edge only) —</div>
+
+  <div class="upload-box" style="padding:12px 16px;margin-bottom:10px;">
+    <input type="file" id="folderInput" webkitdirectory multiple onchange="handleBatch(event)">
+    <div style="display:flex;align-items:center;gap:10px;pointer-events:none;">
+      <div style="font-size:22px;">🗂️</div>
       <div>
-        <div style="font-size:13px;font-weight:700;">Upload whole folder (Computer only)</div>
-        <div style="font-size:11px;color:var(--muted);">Select a folder — all images inside load at once</div>
+        <div style="font-size:13px;font-weight:700;">Select single folder</div>
+        <div style="font-size:11px;color:var(--muted);">Chrome/Edge only — select one folder at a time</div>
       </div>
     </div>
   </div>
@@ -272,8 +282,13 @@ function setPill(c,t){const p=document.getElementById('drivePill');p.className='
 
 async function handleBatch(e){
   const files=Array.from(e.target.files).filter(f=>f.type.startsWith('image/'));
-  if(!files.length){showToast('No images selected');return;}
+  if(!files.length){showToast('No images found');return;}
+  await loadImageFiles(files);
+}
+
+async function loadImageFiles(files){
   batchPhotos=[];
+  showToast(`📷 Loading ${files.length} images...`);
   await Promise.all(files.map(file=>new Promise(res=>{
     const r=new FileReader();
     r.onload=ev=>{batchPhotos.push({name:file.name,b64:ev.target.result.split(',')[1],mime:file.type||'image/jpeg',url:ev.target.result});res();};
@@ -285,7 +300,57 @@ async function handleBatch(e){
   document.getElementById('batchBox').classList.add('loaded');
   document.getElementById('batchBadge').innerHTML=`<div class="upload-badge">✓ ${batchPhotos.length} photos ready</div>`;
   updateBtn();
-  showToast('✓ '+batchPhotos.length+' photos selected');
+  showToast('✓ '+batchPhotos.length+' photos loaded');
+}
+
+// ── DRAG & DROP — supports multiple folders ───────────
+function dragOver(e){
+  e.preventDefault();e.stopPropagation();
+  const z=document.getElementById('dropZone');
+  z.style.borderColor='var(--ink)';z.style.background='#f0f0e8';
+}
+function dragLeave(e){
+  const z=document.getElementById('dropZone');
+  z.style.borderColor='var(--border)';z.style.background='var(--card)';
+}
+async function dropFiles(e){
+  e.preventDefault();e.stopPropagation();
+  dragLeave(e);
+  showToast('📁 Reading folders...');
+  const items=Array.from(e.dataTransfer.items);
+  const imageFiles=[];
+  await Promise.all(items.map(item=>{
+    const entry=item.webkitGetAsEntry&&item.webkitGetAsEntry();
+    if(entry) return readEntry(entry,imageFiles);
+    const file=item.getAsFile();
+    if(file&&file.type.startsWith('image/'))imageFiles.push(file);
+    return Promise.resolve();
+  }));
+  if(!imageFiles.length){showToast('❌ No images found in dropped folders');return;}
+  await loadImageFiles(imageFiles);
+}
+
+async function readEntry(entry,imageFiles){
+  if(entry.isFile){
+    return new Promise(res=>{
+      entry.file(file=>{
+        if(file.type.startsWith('image/')||/\.(jpg|jpeg|png|heic|bmp|webp|gif)$/i.test(file.name))imageFiles.push(file);
+        res();
+      },()=>res());
+    });
+  } else if(entry.isDirectory){
+    const reader=entry.createReader();
+    return new Promise(res=>{
+      const readAll=()=>{
+        reader.readEntries(async entries=>{
+          if(!entries.length){res();return;}
+          await Promise.all(entries.map(e=>readEntry(e,imageFiles)));
+          readAll();
+        },()=>res());
+      };
+      readAll();
+    });
+  }
 }
 
 function updateBtn(){document.getElementById('checkBtn').disabled=!(batchPhotos.length>0&&gToken&&allFiles.length>0);}
