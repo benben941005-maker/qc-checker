@@ -357,9 +357,206 @@ function updateBtn(){document.getElementById('checkBtn').disabled=!(batchPhotos.
 
 async function runBatch(){
   const apiKey=localStorage.getItem('qc_apikey');
-  if(!apiKey){showToast('⚠ Add API key in Settings');goTab('settings');return;}
+  if(!apiKey){
+    document.getElementById('resultArea').innerHTML=`<div style="background:#fff2e8;border:1px solid #ffbb96;border-radius:12px;padding:16px;margin-top:12px;font-size:14px;color:var(--red);">
+      ⚠️ <b>API Key missing!</b><br><br>Go to <b>⚙ Settings</b> tab → paste your Anthropic API key → tap Save.<br><br>
+      Get key at: <b>console.anthropic.com</b>
+    </div>`;
+    return;
+  }
   if(!allFiles.length){showToast('⚠ Connect Google Drive first');return;}
   const total=batchPhotos.length;
+
+  // Warn if too many photos
+  if(total>50){
+    if(!confirm(`You selected ${total} photos. This will use ~${total*2} AI calls and may take ${Math.round(total*0.5)} minutes. Continue?`))return;
+  }
+
+  document.getElementById('checkBtn').disabled=true;
+  document.getElementById('progWrap').style.display='block';
+
+  // Show live results container immediately
+  document.getElementById('resultArea').innerHTML=`
+    <div class="batch-summary" id="liveSummary">
+      <div class="sum-head">
+        <div style="font-size:26px;" id="sumIcon">⏳</div>
+        <div>
+          <div style="font-size:17px;font-weight:800;">Checking in progress...</div>
+          <div style="font-size:12px;color:var(--muted);" id="sumSubtitle">0 of ${total} photos done</div>
+        </div>
+      </div>
+      <div class="batch-stats">
+        <div class="stat s-all">📋 <span id="cntTotal">0</span></div>
+        <div class="stat s-ok">✓ <span id="cntPass">0</span> Pass</div>
+        <div class="stat s-no">✗ <span id="cntFail">0</span> Fail</div>
+      </div>
+      <div id="liveResults"></div>
+    </div>`;
+
+  let passCount=0,failCount=0,totalProducts=0;
+  const allResults=[];
+
+  for(let i=0;i<total;i++){
+    const photo=batchPhotos[i];
+    setThumb(i,'ts-c','⏳');
+    setProgress(Math.round(i/total*100),`Photo ${i+1} of ${total}: ${photo.name}`);
+    document.getElementById('progCount').textContent=`${i+1}/${total}`;
+    document.getElementById('sumSubtitle').textContent=`${i} of ${total} photos done — ${totalProducts} products found`;
+
+    try{
+      // Detect all products in photo
+      const detectRaw=await claude(apiKey,[
+        {type:'image',source:{type:'base64',media_type:photo.mime,data:photo.b64}},
+        {type:'text',text:`Look at this photo carefully. It may show ONE or MULTIPLE product labels.
+For EACH product label visible, READ THE TEXT DIRECTLY FROM THE LABEL IMAGE:
+- Chinese product name (中文名称) — read exactly from label
+- English product name — read exactly from label
+- LOT number / 批号 — read exactly from label
+- Expiry date / 有效期 — read exactly from label
+
+Available master files to match:
+${allFiles.map((f,idx)=>`${idx}: ${f.name}`).join('\n')}
+
+Return ONLY raw JSON array — one entry per product found:
+[{"file_index":0,"product_name_zh":"EXACT Chinese name from label","product_name_en":"EXACT English name from label","lot_on_label":"EXACT LOT from label or null","expiry_date":"EXACT expiry from label or null"}]
+If only one product, still return as array with one item.`}
+      ]);
+
+      let products=[];
+      try{
+        const cleaned=detectRaw.replace(/```json|```/g,'').trim();
+        const arr=cleaned.match(/\[[\s\S]*\]/);
+        products=arr?JSON.parse(arr[0]):[];
+      }catch(e){products=[];}
+      if(!products.length)products=[{file_index:0,product_name_zh:'',product_name_en:'',lot_on_label:null,expiry_date:null}];
+
+      let photoAnyFail=false;
+
+      for(let p=0;p<products.length;p++){
+        const prod=products[p];
+        const mf=allFiles[Math.min(parseInt(prod.file_index)||0,allFiles.length-1)];
+        const arrayBuffer=await gDownload(mf.id);
+        const docText=await extractDocxText(arrayBuffer);
+        const cRaw=await claude(apiKey,[
+          {type:'image',source:{type:'base64',media_type:photo.mime,data:photo.b64}},
+          {type:'text',text:`You are a bilingual product QC expert.
+This photo may contain multiple products. Focus ONLY on: "${prod.product_name_zh||prod.product_name_en||mf.name}"
+
+Compare against MASTER WORD DOCUMENT (source of truth).
+Master: ${mf.name}
+MASTER TEXT:
+---
+${docText||'(use filename: '+mf.name+')'}
+---
+
+Check ALL fields. IMPORTANT RULES:
+- Field in BOTH → MATCH or MISMATCH
+- Field on label but NOT in master → NOT_IN_MASTER (not a failure)
+- Field in master not on label → NOT_VISIBLE (not a failure)
+- overall FAIL only if MISMATCH found
+
+Return ONLY raw JSON:
+{"product_name_zh":"exact from photo","product_name_en":"exact from photo","lot_on_label":"exact from photo or null","expiry_date":"exact from photo or null","overall":"PASS or FAIL","summary_zh":"一句话","summary_en":"one sentence","fields":[{"field":"","field_zh":"","label_value":"","master_value":"","status":"MATCH or MISMATCH or NOT_VISIBLE or NOT_IN_MASTER","note":""}]}`}
+        ]);
+
+        const result=JSON.parse(cRaw.replace(/```json|```/g,'').trim().match(/\{[\s\S]*\}/)[0]);
+        const ok=result.overall==='PASS';
+        if(!ok)photoAnyFail=true;
+        if(ok)passCount++;else failCount++;
+        totalProducts++;
+
+        // Update summary counts live
+        document.getElementById('cntTotal').textContent=totalProducts;
+        document.getElementById('cntPass').textContent=passCount;
+        document.getElementById('cntFail').textContent=failCount;
+        document.getElementById('sumIcon').textContent=failCount>0?'⚠️':'✅';
+
+        // Save log
+        const logEntry={
+          timestamp:new Date().toISOString(),
+          product_name_zh:result.product_name_zh||prod.product_name_zh||mf.name,
+          product_name_en:result.product_name_en||prod.product_name_en||'',
+          lot:result.lot_on_label||prod.lot_on_label||'—',
+          expiry:result.expiry_date||prod.expiry_date||'',
+          master_file:mf.name,
+          photo_name:photo.name,
+          overall:result.overall,
+          summary_en:result.summary_en||'',
+          mismatch_count:(result.fields||[]).filter(f=>f.status==='MISMATCH').length
+        };
+        checkLog.unshift(logEntry);
+        localStorage.setItem('qc_log',JSON.stringify(checkLog.slice(0,5000)));
+
+        // Add result row live
+        const mis=(result.fields||[]).filter(f=>f.status==='MISMATCH').length;
+        const multiTag=products.length>1?` <span style="font-size:9px;background:#e6f4ff;color:#1677ff;padding:1px 5px;border-radius:6px;">P${p+1}/${products.length}</span>`:'';
+        const fields=(result.fields||[]).map(f=>{
+          const dc=f.status==='MATCH'?'dok':f.status==='MISMATCH'?'dno':'dwarn';
+          const tag=f.status==='NOT_IN_MASTER'?'<span style="background:#f5f5f5;color:#999;font-size:9px;padding:1px 5px;border-radius:4px;margin-left:4px;">NOT IN MASTER</span>':f.status==='NOT_VISIBLE'?'<span style="background:#f5f5f5;color:#999;font-size:9px;padding:1px 5px;border-radius:4px;margin-left:4px;">NOT VISIBLE</span>':'';
+          return `<div class="frow"><div class="fdot ${dc}"></div><div>
+            <div class="fname">${f.field}${f.field_zh?' / '+f.field_zh:''}${tag}</div>
+            <div class="fval">${f.label_value||'—'}</div>
+            ${f.status==='MISMATCH'&&f.master_value?`<div class="fnote">✦ Master: ${f.master_value}</div>`:''}
+            ${f.note?`<div class="fnote">⚠ ${f.note}</div>`:''}
+          </div></div>`;
+        }).join('');
+
+        const rowId=`r${i}_${p}`;
+        const newRow=`<div class="b-item" style="border-left:3px solid ${ok?'var(--green)':'var(--red)'};" onclick="toggleD('${rowId}')">
+          <div class="b-top">
+            <img class="b-thumb" src="${photo.url}">
+            <div style="flex:1;min-width:0;">
+              <div class="b-name">${result.product_name_zh||prod.product_name_zh||mf.name}${multiTag}</div>
+              <div class="b-en">${result.product_name_en||prod.product_name_en||''}</div>
+              <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px;">
+                LOT: ${result.lot_on_label||'—'}${result.expiry_date?' · Exp: '+result.expiry_date:''}
+              </div>
+              <div style="font-size:10px;color:var(--muted);margin-top:1px;">📷 ${photo.name}</div>
+            </div>
+            <div class="badge ${ok?'b-pass':'b-fail'}">${ok?'PASS ✓':`FAIL ✗${mis?' ('+mis+')':''}`}</div>
+          </div>
+          ${result.summary_zh?`<div style="font-size:12px;color:var(--muted);margin-top:4px;">${result.summary_zh}</div>`:''}
+          <div class="b-detail" id="bd${rowId}">${fields}</div>
+          <div style="font-size:11px;color:var(--muted);text-align:right;margin-top:4px;">tap to see details ▾</div>
+        </div>`;
+
+        // Prepend FAIL, append PASS so fails show at top
+        const liveEl=document.getElementById('liveResults');
+        if(ok){
+          liveEl.insertAdjacentHTML('beforeend',newRow);
+        }else{
+          liveEl.insertAdjacentHTML('afterbegin',newRow);
+        }
+        allResults.push({photo,mf:mf.name,result,logEntry});
+      }
+
+      setThumb(i,photoAnyFail?'ts-no':'ts-ok',photoAnyFail?'✗':'✓');
+
+    }catch(err){
+      setThumb(i,'ts-no','!');
+      failCount++;totalProducts++;
+      document.getElementById('cntTotal').textContent=totalProducts;
+      document.getElementById('cntFail').textContent=failCount;
+      const liveEl=document.getElementById('liveResults');
+      liveEl.insertAdjacentHTML('afterbegin',`<div class="b-item" style="border-left:3px solid var(--red);">
+        <div class="b-top">
+          <img class="b-thumb" src="${photo.url}">
+          <div style="flex:1;"><div class="b-name" style="color:var(--red);">Error</div>
+          <div class="b-en">${photo.name}</div>
+          <div style="font-size:12px;color:var(--red);margin-top:4px;">${err.message}</div></div>
+          <div class="badge b-fail">ERROR</div>
+        </div>
+      </div>`);
+    }
+  }
+
+  setProgress(100,'✓ All done!');
+  document.getElementById('progCount').textContent=`${total}/${total}`;
+  document.getElementById('sumSubtitle').textContent=`${total} photos · ${totalProducts} products checked`;
+  document.getElementById('sumIcon').textContent=failCount===0?'✅':'⚠️';
+  document.getElementById('checkBtn').disabled=false;
+  showToast(`✓ Done! ${passCount} pass, ${failCount} fail`);
+}
   document.getElementById('checkBtn').disabled=true;
   document.getElementById('progWrap').style.display='block';
   document.getElementById('resultArea').innerHTML='';
@@ -460,19 +657,6 @@ Return ONLY raw JSON:
       setThumb(i,anyFail?'ts-no':'ts-ok',anyFail?'✗':'✓');
       results.push(...photoResults);
 
-    }catch(err){
-      setThumb(i,'ts-no','!');
-      results.push({photo,mf:'—',result:null,error:err.message,productIndex:0,totalProducts:1});
-    }
-  }
-  setProgress(100,'✓ All done!');
-  document.getElementById('progCount').textContent=`${total}/${total}`;
-  document.getElementById('checkBtn').disabled=false;
-  renderResults(results);
-  const p=results.filter(r=>r.result?.overall==='PASS').length;
-  showToast(`✓ Done! ${p} pass, ${results.length-p} fail`);
-}
-
 function setThumb(i,c,t){const e=document.getElementById('ts'+i);if(e){e.className='thumb-status '+c;e.textContent=t;}}
 function setProgress(p,m){document.getElementById('progFill').style.width=p+'%';document.getElementById('progLbl').textContent=m;}
 
@@ -520,11 +704,7 @@ function renderResults(results){
       <div class="b-detail" id="bd${i}">${fields}</div>
       <div style="font-size:11px;color:var(--muted);text-align:right;margin-top:6px;">tap to see details ▾</div>
     </div>`;
-  });
-  document.getElementById('resultArea').innerHTML=html+'</div>';
-}
-
-function toggleD(i){const e=document.getElementById('bd'+i);if(e)e.classList.toggle('open');}
+function toggleD(id){const e=document.getElementById('bd'+id);if(e)e.classList.toggle('open');}
 
 async function gFetch(url){
   const r=await fetch(url,{headers:{Authorization:'Bearer '+gToken}});
