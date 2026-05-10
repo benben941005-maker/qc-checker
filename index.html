@@ -316,6 +316,7 @@ function loadFiles() {
       setPill('on', '● Drive Connected');
       showToast('✓ ' + allFiles.length + ' master files loaded');
       updateBtn();
+    })
     .catch(function(e) { setPill('off', '● Error'); showToast('❌ ' + e.message); });
 }
 
