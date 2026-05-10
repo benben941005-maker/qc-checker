@@ -337,49 +337,35 @@ function handleFiles(e) {
 
 function loadImageFiles(files) {
   batchPhotos = [];
-  showToast('📷 Loading ' + files.length + ' images...');
+  var total = files.length;
+  var done = 0;
+  showToast('📷 Loading ' + total + ' images...');
 
   var promises = files.map(function(file) {
     return new Promise(function(res) {
       var isHeic = /\.(heic|heif)$/i.test(file.name) || file.type === 'image/heic' || file.type === 'image/heif';
 
       if (isHeic) {
-        // Try to convert HEIC using createImageBitmap + canvas (works in Chrome 94+)
-        createImageBitmap(file)
-          .then(function(bitmap) {
-            var canvas = document.createElement('canvas');
-            canvas.width = bitmap.width;
-            canvas.height = bitmap.height;
-            canvas.getContext('2d').drawImage(bitmap, 0, 0);
-            var jpgUrl = canvas.toDataURL('image/jpeg', 0.90);
-            batchPhotos.push({
-              name: file.name.replace(/\.(heic|heif)$/i, '.jpg'),
-              b64: jpgUrl.split(',')[1],
-              mime: 'image/jpeg',
-              url: jpgUrl
-            });
-            bitmap.close();
-            res();
-          })
-          .catch(function() {
-            // createImageBitmap failed — try reading raw and sending as-is
-            // Claude may still process it
-            var r = new FileReader();
-            r.onload = function(ev) {
-              var dataUrl = ev.target.result;
-              batchPhotos.push({
-                name: file.name,
-                b64: dataUrl.split(',')[1],
-                mime: 'image/jpeg', // force jpeg mime
-                url: dataUrl
-              });
+        // Try ImageDecoder API (Chrome 94+) for HEIC
+        if (typeof ImageDecoder !== 'undefined') {
+          file.arrayBuffer().then(function(buffer) {
+            var decoder = new ImageDecoder({ data: buffer, type: 'image/heic' });
+            decoder.decode().then(function(result) {
+              var canvas = document.createElement('canvas');
+              var frame = result.image;
+              canvas.width = frame.displayWidth;
+              canvas.height = frame.displayHeight;
+              canvas.getContext('2d').drawImage(frame, 0, 0);
+              var jpgUrl = canvas.toDataURL('image/jpeg', 0.90);
+              batchPhotos.push({ name: file.name.replace(/\.(heic|heif)$/i, '.jpg'), b64: jpgUrl.split(',')[1], mime: 'image/jpeg', url: jpgUrl });
               res();
-            };
-            r.onerror = function() { res(); };
-            r.readAsDataURL(file);
-          });
+            }).catch(function() { tryBlobUrl(file, res); });
+          }).catch(function() { tryBlobUrl(file, res); });
+        } else {
+          tryBlobUrl(file, res);
+        }
       } else {
-        // Normal image file
+        // Normal JPG/PNG
         var r = new FileReader();
         r.onload = function(ev) {
           var dataUrl = ev.target.result;
@@ -405,6 +391,37 @@ function loadImageFiles(files) {
     updateBtn();
     showToast('✓ ' + batchPhotos.length + ' photos ready to check');
   });
+}
+
+function tryBlobUrl(file, res) {
+  // Create blob URL and draw to canvas via Image element
+  var blobUrl = URL.createObjectURL(file);
+  var img = new Image();
+  img.onload = function() {
+    var canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth || img.width;
+    canvas.height = img.naturalHeight || img.height;
+    if (canvas.width > 0 && canvas.height > 0) {
+      canvas.getContext('2d').drawImage(img, 0, 0);
+      var jpgUrl = canvas.toDataURL('image/jpeg', 0.90);
+      batchPhotos.push({ name: file.name.replace(/\.(heic|heif)$/i, '.jpg'), b64: jpgUrl.split(',')[1], mime: 'image/jpeg', url: jpgUrl });
+    }
+    URL.revokeObjectURL(blobUrl);
+    res();
+  };
+  img.onerror = function() {
+    // Chrome can't decode HEIC — read raw bytes and send as jpeg anyway
+    // This is a last resort — tell user to convert
+    URL.revokeObjectURL(blobUrl);
+    var r = new FileReader();
+    r.onload = function(ev) {
+      // Mark as failed HEIC so we can show specific error
+      batchPhotos.push({ name: file.name, b64: null, mime: 'image/jpeg', url: '', heicFailed: true });
+      res();
+    };
+    r.readAsDataURL(file);
+  };
+  img.src = blobUrl;
 }
 
 // ── DRAG & DROP ──────────────────────────────────────
@@ -507,6 +524,20 @@ function runBatch() {
   var chain = Promise.resolve();
   batchPhotos.forEach(function(photo, i) {
     chain = chain.then(function() {
+      if (photo.heicFailed || !photo.b64) {
+        setThumb(i, 'ts-no', '!');
+        failCount++; totalProds++;
+        document.getElementById('cntT').textContent = totalProds;
+        document.getElementById('cntF').textContent = failCount;
+        document.getElementById('liveRows').insertAdjacentHTML('afterbegin',
+          '<div class="b-item" style="border-left:3px solid var(--orange);">' +
+          '<div class="b-top"><div style="width:44px;height:44px;border-radius:8px;background:#fff2e8;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">📱</div>' +
+          '<div style="flex:1;padding-left:8px;"><div class="b-name" style="color:var(--orange);">HEIC — Need to convert</div>' +
+          '<div class="b-en">' + photo.name + '</div>' +
+          '<div style="font-size:11px;color:var(--muted);margin-top:4px;">iPhone Settings → Camera → Formats → <b>Most Compatible</b> → retake as JPG</div></div>' +
+          '<div class="badge" style="background:#fff2e8;color:var(--orange);border:1px solid #ffd591;">HEIC</div></div></div>');
+        return Promise.resolve();
+      }
       setThumb(i, 'ts-c', '⏳');
       setProgress(Math.round(i / total * 100), 'Photo ' + (i+1) + ' of ' + total + ': ' + photo.name);
       document.getElementById('progCount').textContent = (i+1) + '/' + total;
@@ -546,19 +577,32 @@ function runBatch() {
                 return callClaude(apiKey, [
                   { type: 'image', source: { type: 'base64', media_type: photo.mime, data: photo.b64 } },
                   { type: 'text', text:
-                    'Bilingual product QC expert. Focus ONLY on: "' + (prod.product_name_zh || prod.product_name_en || mf.name) + '"\n' +
-                    'Compare against MASTER WORD DOCUMENT (source of truth).\nMaster: ' + mf.name + '\n\nMASTER TEXT:\n---\n' + (docText || '(use filename: ' + mf.name + ')') + '\n---\n\n' +
-                    'Check: 中文名, English name, 描述, description, barcode/条形码, 净重, LOT/批号, expiry/有效期, 成分/ingredients.\n\n' +
-                    'RULES:\n- Both label+master: MATCH or MISMATCH\n- On label, not in master: NOT_IN_MASTER (not a failure)\n- In master, not on label: NOT_VISIBLE (not a failure)\n- overall FAIL only if MISMATCH found\n\n' +
-                    'Return ONLY raw JSON:\n{"product_name_zh":"exact from photo","product_name_en":"exact from photo","lot_on_label":"exact from photo or null","expiry_date":"exact from photo or null","overall":"PASS or FAIL","summary_zh":"一句话","summary_en":"one sentence","fields":[{"field":"","field_zh":"","label_value":"","master_value":"","status":"MATCH or MISMATCH or NOT_VISIBLE or NOT_IN_MASTER","note":""}]}'
+                    'You are a bilingual product QC expert.\n' +
+                    'Focus ONLY on this specific product visible on the label: "' + (prod.product_name_zh || prod.product_name_en || mf.name) + '"\n\n' +
+                    'MASTER WORD DOCUMENT (source of truth):\nFile: ' + mf.name + '\n\nMASTER TEXT:\n---\n' + (docText || '(no text extracted)') + '\n---\n\n' +
+                    'IMPORTANT: First check if this product exists in the master document.\n' +
+                    'If the master document does NOT contain this product at all → set overall to "NOT_IN_MASTER" and summary_zh to "主文档无此品种"\n\n' +
+                    'If product IS in master → compare all fields:\n' +
+                    '- 中文名/Chinese name, English name, 描述/description, barcode/条形码, 净重/net weight, LOT/批号, expiry/有效期, 成分/ingredients\n\n' +
+                    'STATUS RULES:\n' +
+                    '- Field matches exactly → MATCH\n' +
+                    '- Field differs → MISMATCH (causes FAIL)\n' +
+                    '- On label but not in master → NOT_IN_MASTER (NOT a failure)\n' +
+                    '- In master but not visible on label → NOT_VISIBLE (NOT a failure)\n' +
+                    '- overall = FAIL ONLY if MISMATCH found\n' +
+                    '- overall = NOT_IN_MASTER if product not found in master at all\n' +
+                    '- overall = PASS if all fields match\n\n' +
+                    'Return ONLY raw JSON:\n{"product_name_zh":"exact from photo","product_name_en":"exact from photo","lot_on_label":"exact from photo or null","expiry_date":"exact from photo or null","overall":"PASS or FAIL or NOT_IN_MASTER","summary_zh":"一句话中文总结","summary_en":"one sentence English summary","fields":[{"field":"","field_zh":"","label_value":"","master_value":"","status":"MATCH or MISMATCH or NOT_VISIBLE or NOT_IN_MASTER","note":""}]}'
                   }
                 ]);
               })
               .then(function(cRaw) {
                 var result = JSON.parse(cRaw.replace(/```json|```/g, '').trim().match(/\{[\s\S]*\}/)[0]);
                 var ok = result.overall === 'PASS';
-                if (!ok) photoFail = true;
-                if (ok) passCount++; else failCount++;
+                var notInMaster = result.overall === 'NOT_IN_MASTER';
+                if (!ok && !notInMaster) photoFail = true;
+                if (ok) passCount++;
+                else if (!notInMaster) failCount++;
                 totalProds++;
 
                 document.getElementById('cntT').textContent = totalProds;
@@ -583,9 +627,13 @@ function runBatch() {
                 // Render row
                 var mis = (result.fields || []).filter(function(f) { return f.status === 'MISMATCH'; }).length;
                 var multiTag = products.length > 1 ? '<span style="font-size:9px;background:#e6f4ff;color:#1677ff;padding:1px 5px;border-radius:6px;margin-left:4px;">P' + (p+1) + '/' + products.length + '</span>' : '';
+                var badgeCls = ok ? 'b-pass' : notInMaster ? '' : 'b-fail';
+                var badgeStyle = notInMaster ? 'background:#f5f5f5;color:#999;border:1px solid #ddd;' : '';
+                var badgeTxt = ok ? 'PASS ✓' : notInMaster ? '主文档无此品种' : ('FAIL ✗' + (mis ? ' (' + mis + ')' : ''));
+                var borderColor = ok ? 'var(--green)' : notInMaster ? '#ccc' : 'var(--red)';
                 var fields = (result.fields || []).map(function(f) {
                   var dc = f.status === 'MATCH' ? 'dok' : f.status === 'MISMATCH' ? 'dno' : 'dwarn';
-                  var tag = f.status === 'NOT_IN_MASTER' ? '<span style="background:#f5f5f5;color:#999;font-size:9px;padding:1px 4px;border-radius:3px;margin-left:3px;">NOT IN MASTER</span>' :
+                  var tag = f.status === 'NOT_IN_MASTER' ? '<span style="background:#f5f5f5;color:#999;font-size:9px;padding:1px 4px;border-radius:3px;margin-left:3px;">主文档无此项</span>' :
                             f.status === 'NOT_VISIBLE' ? '<span style="background:#f5f5f5;color:#999;font-size:9px;padding:1px 4px;border-radius:3px;margin-left:3px;">NOT VISIBLE</span>' : '';
                   return '<div class="frow"><div class="fdot ' + dc + '"></div><div>' +
                     '<div class="fname">' + f.field + (f.field_zh ? ' / ' + f.field_zh : '') + tag + '</div>' +
@@ -596,7 +644,7 @@ function runBatch() {
                 }).join('');
 
                 var rid = 'r' + i + '_' + p;
-                var row = '<div class="b-item" style="border-left:3px solid ' + (ok ? 'var(--green)' : 'var(--red)') + ';" onclick="toggleD(\'' + rid + '\')">' +
+                var row = '<div class="b-item" style="border-left:3px solid ' + borderColor + ';" onclick="toggleD(\'' + rid + '\')">' +
                   '<div class="b-top">' +
                   '<img class="b-thumb" src="' + photo.url + '">' +
                   '<div style="flex:1;min-width:0;">' +
@@ -605,7 +653,7 @@ function runBatch() {
                   '<div style="font-size:11px;color:var(--muted);font-family:\'DM Mono\',monospace;margin-top:2px;">LOT: ' + (result.lot_on_label || '—') + (result.expiry_date ? ' · Exp: ' + result.expiry_date : '') + '</div>' +
                   '<div style="font-size:10px;color:var(--muted);margin-top:1px;">📷 ' + photo.name + '</div>' +
                   '</div>' +
-                  '<div class="badge ' + (ok ? 'b-pass' : 'b-fail') + '">' + (ok ? 'PASS ✓' : 'FAIL ✗' + (mis ? ' (' + mis + ')' : '')) + '</div>' +
+                  '<div class="badge ' + badgeCls + '" style="' + badgeStyle + '">' + badgeTxt + '</div>' +
                   '</div>' +
                   (result.summary_zh ? '<div style="font-size:12px;color:var(--muted);margin-top:4px;">' + result.summary_zh + '</div>' : '') +
                   '<div class="b-detail" id="bd' + rid + '">' + fields + '</div>' +
@@ -613,8 +661,9 @@ function runBatch() {
                   '</div>';
 
                 var liveEl = document.getElementById('liveRows');
-                if (ok) liveEl.insertAdjacentHTML('beforeend', row);
-                else liveEl.insertAdjacentHTML('afterbegin', row);
+                if (notInMaster) liveEl.insertAdjacentHTML('beforeend', row); // NOT_IN_MASTER goes to bottom
+                else if (ok) liveEl.insertAdjacentHTML('beforeend', row);     // PASS goes to bottom
+                else liveEl.insertAdjacentHTML('afterbegin', row);            // FAIL goes to top
               });
           });
         });
@@ -623,17 +672,31 @@ function runBatch() {
         });
       })
       .catch(function(err) {
-        setThumb(i, 'ts-no', '!');
-        failCount++; totalProds++;
-        document.getElementById('cntT').textContent = totalProds;
-        document.getElementById('cntF').textContent = failCount;
-        document.getElementById('liveRows').insertAdjacentHTML('afterbegin',
-          '<div class="b-item" style="border-left:3px solid var(--red);">' +
-          '<div class="b-top"><img class="b-thumb" src="' + photo.url + '">' +
-          '<div style="flex:1;"><div class="b-name" style="color:var(--red);">Error</div>' +
-          '<div class="b-en">' + photo.name + '</div>' +
-          '<div style="font-size:12px;color:var(--red);margin-top:4px;">' + err.message + '</div></div>' +
-          '<div class="badge b-fail">ERROR</div></div></div>');
+        if (photo.heicFailed) {
+          setThumb(i, 'ts-no', '!');
+          failCount++; totalProds++;
+          document.getElementById('cntT').textContent = totalProds;
+          document.getElementById('cntF').textContent = failCount;
+          document.getElementById('liveRows').insertAdjacentHTML('afterbegin',
+            '<div class="b-item" style="border-left:3px solid var(--orange);">' +
+            '<div class="b-top"><div style="width:44px;height:44px;border-radius:8px;background:#fff2e8;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">📱</div>' +
+            '<div style="flex:1;padding-left:8px;"><div class="b-name" style="color:var(--orange);">HEIC — Cannot convert</div>' +
+            '<div class="b-en">' + photo.name + '</div>' +
+            '<div style="font-size:11px;color:var(--muted);margin-top:4px;">On iPhone: Settings → Camera → Formats → Most Compatible<br>Then retake photo as JPG ✅</div></div>' +
+            '<div class="badge" style="background:#fff2e8;color:var(--orange);border:1px solid #ffd591;">HEIC</div></div></div>');
+        } else {
+          setThumb(i, 'ts-no', '!');
+          failCount++; totalProds++;
+          document.getElementById('cntT').textContent = totalProds;
+          document.getElementById('cntF').textContent = failCount;
+          document.getElementById('liveRows').insertAdjacentHTML('afterbegin',
+            '<div class="b-item" style="border-left:3px solid var(--red);">' +
+            '<div class="b-top"><img class="b-thumb" src="' + (photo.url||'') + '">' +
+            '<div style="flex:1;padding-left:8px;"><div class="b-name" style="color:var(--red);">Error</div>' +
+            '<div class="b-en">' + photo.name + '</div>' +
+            '<div style="font-size:12px;color:var(--red);margin-top:4px;">' + err.message + '</div></div>' +
+            '<div class="badge b-fail">ERROR</div></div></div>');
+        }
       });
     });
   });
@@ -695,20 +758,25 @@ function renderLog() {
   if (!checkLog.length) { el.innerHTML = '<div class="log-empty">No checks yet.<br>Go to Scan tab to start. 📷</div>'; return; }
   el.innerHTML = checkLog.map(function(e) {
     var ok = e.overall === 'PASS';
+    var nim = e.overall === 'NOT_IN_MASTER';
+    var borderClr = ok ? 'var(--green)' : nim ? '#ccc' : 'var(--red)';
+    var bdgCls = ok ? 'bok' : nim ? '' : 'bno';
+    var bdgStyle = nim ? 'background:#f5f5f5;color:#999;border:1px solid #ddd;' : '';
+    var bdgTxt = ok ? '✓ PASS' : nim ? '主文档无此品种' : '✗ FAIL';
     var dt = new Date(e.timestamp);
     var ds = dt.toLocaleDateString('zh-CN') + ' ' + dt.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-    return '<div class="log-item" style="border-left:4px solid ' + (ok ? 'var(--green)' : 'var(--red)') + ';">' +
+    return '<div class="log-item" style="border-left:4px solid ' + borderClr + ';">' +
       '<div class="log-top">' +
       '<div style="flex:1;min-width:0;">' +
       '<div class="log-name">' + (e.product_name_zh || e.master_file) + '</div>' +
       (e.product_name_en ? '<div style="font-size:12px;color:var(--muted);">' + e.product_name_en + '</div>' : '') +
       '</div>' +
-      '<div class="log-bdg ' + (ok ? 'bok' : 'bno') + '">' + (ok ? '✓ PASS' : '✗ FAIL') + '</div>' +
+      '<div class="log-bdg ' + bdgCls + '" style="' + bdgStyle + '">' + bdgTxt + '</div>' +
       '</div>' +
       '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">' +
       '<div style="background:var(--paper);border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:11px;font-family:\'DM Mono\',monospace;"><span style="color:var(--muted);">批号 LOT</span><br><b>' + (e.lot || '—') + '</b></div>' +
       (e.expiry ? '<div style="background:var(--paper);border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:11px;font-family:\'DM Mono\',monospace;"><span style="color:var(--muted);">有效期 Exp</span><br><b>' + e.expiry + '</b></div>' : '') +
-      (!ok ? '<div style="background:#fff2e8;border:1px solid #ffbb96;border-radius:8px;padding:5px 10px;font-size:11px;font-family:\'DM Mono\',monospace;"><span style="color:var(--muted);">不符合</span><br><b style="color:var(--red);">' + e.mismatch_count + ' mismatch</b></div>' : '') +
+      (!ok && !nim ? '<div style="background:#fff2e8;border:1px solid #ffbb96;border-radius:8px;padding:5px 10px;font-size:11px;font-family:\'DM Mono\',monospace;"><span style="color:var(--muted);">不符合</span><br><b style="color:var(--red);">' + e.mismatch_count + ' mismatch</b></div>' : '') +
       '</div>' +
       '<div style="font-size:10px;color:var(--muted);margin-top:6px;font-family:\'DM Mono\',monospace;">📷 ' + (e.photo_name || e.master_file) + ' · ' + ds + '</div>' +
       '</div>';
