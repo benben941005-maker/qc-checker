@@ -218,14 +218,39 @@ body{font-family:'Sora','Noto Sans SC',sans-serif;background:var(--paper);color:
     </div>
     <button class="btn btn-dark btn-sm" onclick="saveFolder()">💾 Save</button>
   </div>
-  <div class="slabel">Claude AI API Key</div>
+  <div class="slabel">AI API Keys</div>
   <div class="card">
+    <div style="background:#f6ffed;border:1px solid #b7eb8f;border-radius:8px;padding:10px 12px;font-size:12px;color:var(--green);margin-bottom:12px;">
+      🤖 自动切换顺序：<b>Gemini → OpenRouter → Anthropic</b>
+    </div>
+
     <div class="set-row">
-      <div class="set-label">Anthropic API Key</div>
+      <div class="set-label">1️⃣ Gemini API Key (免费，优先使用)</div>
+      <input class="set-input" id="geminiKey" type="password" placeholder="AIza...">
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">
+      免费申请：<b>aistudio.google.com</b> → Get API Key<br>
+      使用模型：<b>gemini-1.5-flash</b> (免费·支持图片·100万token)
+    </div>
+
+    <div class="set-row">
+      <div class="set-label">2️⃣ OpenRouter API Key (有免费模型)</div>
+      <input class="set-input" id="openrouterKey" type="password" placeholder="sk-or-v1-...">
+    </div>
+    <div class="set-row">
+      <div class="set-label">OpenRouter 模型 (留空用免费默认)</div>
+      <input class="set-input" id="openrouterModel" placeholder="google/gemini-2.0-flash-exp:free">
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">免费申请：<b>openrouter.ai</b> → Keys<br>
+    免费模型：google/gemini-2.0-flash-exp:free · meta-llama/llama-3.2-90b-vision-instruct:free</div>
+
+    <div class="set-row">
+      <div class="set-label">3️⃣ Anthropic API Key (备用，付费)</div>
       <input class="set-input" id="apiKey" type="password" placeholder="sk-ant-api03-...">
     </div>
-    <button class="btn btn-dark btn-sm" onclick="saveApiKey()">💾 Save API Key</button>
-    <div class="info-box">Get at <b>console.anthropic.com</b> → add $5 credit · ~$0.02 per check</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">充值：<b>console.anthropic.com → Billing</b></div>
+
+    <button class="btn btn-dark btn-sm" onclick="saveApiKeys()">💾 Save All Keys</button>
   </div>
   <div class="slabel">iPhone — Add to Home Screen</div>
   <div class="card" style="font-size:13px;color:var(--muted);line-height:2;">
@@ -251,6 +276,12 @@ var checkLog = [];
 window.addEventListener('DOMContentLoaded', function() {
   var k = localStorage.getItem('qc_apikey');
   if (k) document.getElementById('apiKey').value = k;
+  var gk = localStorage.getItem('qc_gemini_key');
+  if (gk) document.getElementById('geminiKey').value = gk;
+  var ork = localStorage.getItem('qc_openrouter_key');
+  if (ork) document.getElementById('openrouterKey').value = ork;
+  var orm = localStorage.getItem('qc_openrouter_model');
+  if (orm) document.getElementById('openrouterModel').value = orm;
   var f = localStorage.getItem('qc_folder');
   document.getElementById('folderName').value = f || 'registered product labels';
   loadLog();
@@ -483,13 +514,10 @@ function forceStart() {
 }
 
 function updateBtn() {
-  var apiKey = localStorage.getItem('qc_apikey');
+  var hasKey = !!(localStorage.getItem('qc_gemini_key') || localStorage.getItem('qc_openrouter_key') || localStorage.getItem('qc_apikey'));
   var hasPhotos = batchPhotos.length > 0;
   var hasDrive = gToken && allFiles.length > 0;
-  var hasKey = apiKey && apiKey.length > 10;
   document.getElementById('checkBtn').disabled = !(hasPhotos && hasDrive && hasKey);
-
-  // Show why button is disabled
   if (hasPhotos && !hasDrive) showToast('⚠ Connect Google Drive first');
   if (hasPhotos && hasDrive && !hasKey) showToast('⚠ Add API key in Settings');
 }
@@ -544,7 +572,7 @@ function runBatch() {
       document.getElementById('sumSub').textContent = i + ' of ' + total + ' done — ' + totalProds + ' products found';
 
       // Step 1: detect products in photo
-      return callClaude(apiKey, [
+      return callAI([
         { type: 'image', source: { type: 'base64', media_type: photo.mime, data: photo.b64 } },
         { type: 'text', text:
           'Look at this photo carefully. It may show ONE or MULTIPLE product labels.\n' +
@@ -574,25 +602,22 @@ function runBatch() {
             return gDownload(mf.id)
               .then(function(ab) { return extractDocxText(ab); })
               .then(function(docText) {
-                return callClaude(apiKey, [
+                return callAI([
                   { type: 'image', source: { type: 'base64', media_type: photo.mime, data: photo.b64 } },
                   { type: 'text', text:
                     'You are a bilingual product QC expert.\n' +
-                    'Focus ONLY on this specific product visible on the label: "' + (prod.product_name_zh || prod.product_name_en || mf.name) + '"\n\n' +
+                    'Focus ONLY on this specific product: "' + (prod.product_name_zh || prod.product_name_en || mf.name) + '"\n\n' +
                     'MASTER WORD DOCUMENT (source of truth):\nFile: ' + mf.name + '\n\nMASTER TEXT:\n---\n' + (docText || '(no text extracted)') + '\n---\n\n' +
-                    'IMPORTANT: First check if this product exists in the master document.\n' +
-                    'If the master document does NOT contain this product at all → set overall to "NOT_IN_MASTER" and summary_zh to "主文档无此品种"\n\n' +
-                    'If product IS in master → compare all fields:\n' +
-                    '- 中文名/Chinese name, English name, 描述/description, barcode/条形码, 净重/net weight, LOT/批号, expiry/有效期, 成分/ingredients\n\n' +
-                    'STATUS RULES:\n' +
-                    '- Field matches exactly → MATCH\n' +
-                    '- Field differs → MISMATCH (causes FAIL)\n' +
-                    '- On label but not in master → NOT_IN_MASTER (NOT a failure)\n' +
-                    '- In master but not visible on label → NOT_VISIBLE (NOT a failure)\n' +
-                    '- overall = FAIL ONLY if MISMATCH found\n' +
-                    '- overall = NOT_IN_MASTER if product not found in master at all\n' +
-                    '- overall = PASS if all fields match\n\n' +
-                    'Return ONLY raw JSON:\n{"product_name_zh":"exact from photo","product_name_en":"exact from photo","lot_on_label":"exact from photo or null","expiry_date":"exact from photo or null","overall":"PASS or FAIL or NOT_IN_MASTER","summary_zh":"一句话中文总结","summary_en":"one sentence English summary","fields":[{"field":"","field_zh":"","label_value":"","master_value":"","status":"MATCH or MISMATCH or NOT_VISIBLE or NOT_IN_MASTER","note":""}]}'
+                    'IMPORTANT RULES:\n' +
+                    '1. First check if this product exists in master → if NOT, set overall to "NOT_IN_MASTER"\n' +
+                    '2. LOT/批号 and Expiry date/有效期 are PRODUCTION BATCH info — DO NOT compare with master, just READ from label and mark as NOT_IN_MASTER status\n' +
+                    '3. Only compare PRODUCT INFO fields: Chinese name, English name, description/功能主治, dosage/服用方法, ingredients/成分, storage/贮存, contraindication/注意事项, packing/包装规格, extract ratio/提取比例\n' +
+                    '4. Field in both label and master → MATCH or MISMATCH\n' +
+                    '5. Field on label but not in master → NOT_IN_MASTER (not a failure)\n' +
+                    '6. Field in master but not visible on label → NOT_VISIBLE (not a failure)\n' +
+                    '7. overall = FAIL ONLY if product info MISMATCH found\n' +
+                    '8. overall = PASS if all product info fields match (ignore LOT/expiry differences)\n\n' +
+                    'Return ONLY raw JSON (be concise, short notes):\n{"product_name_zh":"exact from photo","product_name_en":"exact from photo","lot_on_label":"exact LOT from photo","expiry_date":"exact expiry from photo","overall":"PASS or FAIL or NOT_IN_MASTER","summary_zh":"一句话","summary_en":"one sentence","fields":[{"field":"","field_zh":"","label_value":"","master_value":"","status":"MATCH or MISMATCH or NOT_VISIBLE or NOT_IN_MASTER","note":""}]}'
                   }
                 ]);
               })
@@ -756,11 +781,94 @@ function extractDocxText(ab) {
   catch(e) { return Promise.resolve(''); }
 }
 
+function callAI(content) {
+  var geminiKey      = localStorage.getItem('qc_gemini_key');
+  var openrouterKey  = localStorage.getItem('qc_openrouter_key');
+  var anthropicKey   = localStorage.getItem('qc_apikey');
+
+  // Build fallback chain: Gemini → OpenRouter → Anthropic
+  var chain = Promise.reject(new Error('start'));
+
+  if (geminiKey) {
+    chain = chain.catch(function() { return callGemini(geminiKey, content); });
+  }
+  if (openrouterKey) {
+    chain = chain.catch(function(err) {
+      if (geminiKey) { console.warn('Gemini failed:', err.message); showToast('⚠ Gemini失败，切换OpenRouter...'); }
+      return callOpenRouter(openrouterKey, content);
+    });
+  }
+  if (anthropicKey) {
+    chain = chain.catch(function(err) {
+      if (openrouterKey || geminiKey) { console.warn('Previous AI failed:', err.message); showToast('⚠ 切换Anthropic备用...'); }
+      return callClaude(anthropicKey, content);
+    });
+  }
+  chain = chain.catch(function() {
+    return Promise.reject(new Error('All AI keys failed or not configured. Go to Settings.'));
+  });
+  return chain;
+}
+
+function callGemini(apiKey, content) {
+  var parts = [];
+  content.forEach(function(item) {
+    if (item.type === 'text') {
+      parts.push({ text: item.text });
+    } else if (item.type === 'image') {
+      parts.push({ inline_data: { mime_type: item.source.media_type, data: item.source.data } });
+    }
+  });
+  return fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + apiKey, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts: parts }],
+      generationConfig: { maxOutputTokens: 8192, temperature: 0.1 }
+    })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.error) throw new Error('Gemini: ' + d.error.message);
+    if (!d.candidates || !d.candidates[0]) throw new Error('Gemini: No response');
+    return d.candidates[0].content.parts.map(function(p) { return p.text || ''; }).join('');
+  });
+}
+
+function callOpenRouter(apiKey, content) {
+  var model = localStorage.getItem('qc_openrouter_model') || 'google/gemini-flash-1.5:free';
+  // Convert to OpenAI format (which OpenRouter uses)
+  var msgContent = [];
+  content.forEach(function(item) {
+    if (item.type === 'text') {
+      msgContent.push({ type: 'text', text: item.text });
+    } else if (item.type === 'image') {
+      msgContent.push({ type: 'image_url', image_url: { url: 'data:' + item.source.media_type + ';base64,' + item.source.data } });
+    }
+  });
+  return fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + apiKey,
+      'HTTP-Referer': 'https://benben941005-maker.github.io',
+      'X-Title': 'QC Checker'
+    },
+    body: JSON.stringify({ model: model, max_tokens: 8192, messages: [{ role: 'user', content: msgContent }] })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.error) throw new Error('OpenRouter: ' + d.error.message);
+    if (!d.choices || !d.choices[0]) throw new Error('OpenRouter: No response');
+    return d.choices[0].message.content || '';
+  });
+}
+
 function callClaude(apiKey, content) {
   return fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-    body: JSON.stringify({ model: 'claude-opus-4-5', max_tokens: 1500, messages: [{ role: 'user', content: content }] })
+    body: JSON.stringify({ model: 'claude-opus-4-5', max_tokens: 4000, messages: [{ role: 'user', content: content }] })
   })
   .then(function(r) { return r.json(); })
   .then(function(d) {
@@ -816,7 +924,22 @@ function exportCSV() {
 }
 
 function clearLog() { if (!confirm('Clear all log entries?')) return; checkLog = []; localStorage.removeItem('qc_log'); renderLog(); showToast('Log cleared'); }
-function saveApiKey() { var k = document.getElementById('apiKey').value.trim(); localStorage.setItem('qc_apikey', k); showToast(k ? '✓ API key saved' : 'Cleared'); }
+function saveApiKeys() {
+  var g  = document.getElementById('geminiKey').value.trim();
+  var or = document.getElementById('openrouterKey').value.trim();
+  var om = document.getElementById('openrouterModel').value.trim();
+  var a  = document.getElementById('apiKey').value.trim();
+  if (g)  localStorage.setItem('qc_gemini_key', g);
+  if (or) localStorage.setItem('qc_openrouter_key', or);
+  if (om) localStorage.setItem('qc_openrouter_model', om);
+  if (a)  localStorage.setItem('qc_apikey', a);
+  var active = [];
+  if (g) active.push('Gemini');
+  if (or) active.push('OpenRouter');
+  if (a) active.push('Anthropic');
+  showToast('✓ Saved: ' + (active.length ? active.join(' → ') : 'No keys'));
+}
+function saveApiKey() { saveApiKeys(); }
 function saveFolder() { var v = document.getElementById('folderName').value.trim(); localStorage.setItem('qc_folder', v); showToast('✓ Saved'); if (gToken) loadFiles(); }
 
 // ── TOAST ────────────────────────────────────────────
