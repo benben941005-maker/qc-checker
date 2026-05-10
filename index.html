@@ -236,7 +236,6 @@ body{font-family:'Sora','Noto Sans SC',sans-serif;background:var(--paper);color:
 <div class="toast" id="toast"></div>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
 <script>
 // ── CONSTANTS ────────────────────────────────────────
 const CLIENT_ID = '297911594147-ig0jsulc8b225b2bfba5dv0rvp0029c2.apps.googleusercontent.com';
@@ -337,70 +336,63 @@ function handleFiles(e) {
 
 function loadImageFiles(files) {
   batchPhotos = [];
-  showToast('📷 Converting & loading ' + files.length + ' images...');
-  var promises = files.map(function(file) {
+  var heicCount = 0;
+  var validFiles = [];
+
+  files.forEach(function(file) {
+    var isHeic = /\.(heic|heif)$/i.test(file.name) || file.type === 'image/heic' || file.type === 'image/heif';
+    if (isHeic) {
+      heicCount++;
+    } else {
+      validFiles.push(file);
+    }
+  });
+
+  if (heicCount > 0 && validFiles.length === 0) {
+    document.getElementById('loadedInfo').style.display = 'block';
+    document.getElementById('loadedBadge').textContent = '⚠ ' + heicCount + ' HEIC files — see note below';
+    document.getElementById('thumbGrid').innerHTML =
+      '<div style="background:#fff2e8;border:1px solid #ffbb96;border-radius:10px;padding:14px;font-size:13px;color:var(--red);width:100%;">' +
+      '<b>⚠ HEIC format not supported on Windows Chrome</b><br><br>' +
+      'Your iPhone photos are in HEIC format. To fix:<br><br>' +
+      '<b>Option 1 (easiest):</b> On iPhone, go to<br>Settings → Camera → Formats → select <b>Most Compatible</b><br>Then retake photos — they will be JPG ✅<br><br>' +
+      '<b>Option 2:</b> Convert existing HEIC files to JPG using <a href="https://heictojpg.com" target="_blank" style="color:var(--red);">heictojpg.com</a><br><br>' +
+      '<b>Option 3:</b> Use iPhone to upload directly — Safari supports HEIC' +
+      '</div>';
+    return;
+  }
+
+  if (heicCount > 0) {
+    showToast('⚠ Skipping ' + heicCount + ' HEIC files — loading ' + validFiles.length + ' JPG/PNG files');
+  } else {
+    showToast('📷 Loading ' + validFiles.length + ' images...');
+  }
+
+  var promises = validFiles.map(function(file) {
     return new Promise(function(res) {
-      var isHeic = /\.(heic|heif)$/i.test(file.name) || file.type === 'image/heic' || file.type === 'image/heif';
-      if (isHeic && typeof heic2any !== 'undefined') {
-        // Convert HEIC to JPG using heic2any
-        heic2any({ blob: file, toType: 'image/jpeg', quality: 0.85 })
-          .then(function(jpgBlob) {
-            var reader = new FileReader();
-            reader.onload = function(ev) {
-              var dataUrl = ev.target.result;
-              batchPhotos.push({ name: file.name.replace(/\.(heic|heif)$/i, '.jpg'), b64: dataUrl.split(',')[1], mime: 'image/jpeg', url: dataUrl });
-              res();
-            };
-            reader.readAsDataURL(jpgBlob);
-          })
-          .catch(function() {
-            // Fallback: try reading as-is
-            readAsDataUrl(file, res);
-          });
-      } else {
-        readAsDataUrl(file, res);
-      }
+      var r = new FileReader();
+      r.onload = function(ev) {
+        var dataUrl = ev.target.result;
+        var mime = file.type && file.type.startsWith('image/') ? file.type : 'image/jpeg';
+        batchPhotos.push({ name: file.name, b64: dataUrl.split(',')[1], mime: mime, url: dataUrl });
+        res();
+      };
+      r.onerror = function() { res(); };
+      r.readAsDataURL(file);
     });
   });
+
   Promise.all(promises).then(function() {
-    batchPhotos = batchPhotos.filter(function(p) { return p.b64; });
     batchPhotos.sort(function(a, b) { return a.name.localeCompare(b.name); });
     document.getElementById('loadedInfo').style.display = 'block';
-    document.getElementById('loadedBadge').textContent = '✓ ' + batchPhotos.length + ' photos ready';
+    document.getElementById('loadedBadge').textContent = '✓ ' + batchPhotos.length + ' photos ready' + (heicCount > 0 ? ' (' + heicCount + ' HEIC skipped)' : '');
     document.getElementById('thumbGrid').innerHTML = batchPhotos.map(function(p, i) {
-      return '<div class="thumb-wrap" id="tw' + i + '"><img class="thumb" src="' + p.url + '" onerror="this.src=\'data:image/svg+xml,<svg xmlns=\\\'http://www.w3.org/2000/svg\\\' width=\\\'60\\\' height=\\\'60\\\'><rect fill=\\\'%23eee\\\' width=\\\'60\\\' height=\\\'60\\\'/><text x=\\\'50%25\\\' y=\\\'50%25\\\' text-anchor=\\\'middle\\\' dy=\\\'.3em\\\' font-size=\\\'10\\\'>IMG</text></svg>\'"><div class="ts ts-p" id="ts' + i + '">·</div></div>';
+      return '<div class="thumb-wrap" id="tw' + i + '"><img class="thumb" src="' + p.url + '"><div class="ts ts-p" id="ts' + i + '">·</div></div>';
     }).join('');
     document.getElementById('pickZone').classList.add('loaded');
     updateBtn();
     showToast('✓ ' + batchPhotos.length + ' photos ready to check');
   });
-}
-
-function readAsDataUrl(file, callback) {
-  var r = new FileReader();
-  r.onload = function(ev) {
-    var dataUrl = ev.target.result;
-    var mime = file.type && file.type.startsWith('image/') ? file.type : 'image/jpeg';
-    // Force jpeg mime for unknown types
-    if (mime === 'image/heic' || mime === 'image/heif') mime = 'image/jpeg';
-    batchPhotos.push({ name: file.name, b64: dataUrl.split(',')[1], mime: mime, url: dataUrl });
-    callback();
-  };
-  r.onerror = function() { callback(); };
-  r.readAsDataURL(file);
-}
-
-function convertToJpg(dataUrl, filename, callback) {
-  var img = new Image();
-  img.onload = function() {
-    var canvas = document.createElement('canvas');
-    canvas.width = img.width; canvas.height = img.height;
-    canvas.getContext('2d').drawImage(img, 0, 0);
-    var jpgUrl = canvas.toDataURL('image/jpeg', 0.92);
-    callback(jpgUrl, jpgUrl.split(',')[1]);
-  };
-  img.onerror = function() { callback(dataUrl, dataUrl.split(',')[1] || ''); };
-  img.src = dataUrl;
 }
 
 // ── DRAG & DROP ──────────────────────────────────────
