@@ -8,7 +8,7 @@
 <title>品质 QC Checker</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=DM+Mono:wght@400;500&family=Sora:wght@400;600;800&display=swap" rel="stylesheet">
 <style>
-:root{--ink:#0e1117;--paper:#f5f2ec;--card:#fff;--red:#d4380d;--green:#237804;--orange:#d46b08;--border:#e0dbd0;--muted:#8c8070;--shadow:0 2px 20px rgba(14,17,23,0.08);--r:16px;}
+:root{--ink:#0e1117;--paper:#f5f2ec;--card:#fff;--red:#d4380d;--green:#237804;--orange:#d46b08;--blue:#1677ff;--border:#e0dbd0;--muted:#8c8070;--shadow:0 2px 20px rgba(14,17,23,0.08);--r:16px;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 body{font-family:'Sora','Noto Sans SC',sans-serif;background:var(--paper);color:var(--ink);min-height:100vh;max-width:520px;margin:0 auto;padding-bottom:40px;}
 .topnav{position:sticky;top:0;z-index:9999;background:var(--ink);padding:14px 18px 0;}
@@ -189,6 +189,10 @@ body{font-family:'Sora','Noto Sans SC',sans-serif;background:var(--paper);color:
   </div>
 
   <button class="btn btn-dark" id="checkBtn" onclick="runBatch()" disabled>🔍 &nbsp;Check All Photos</button>
+  <div style="text-align:center;margin-top:-6px;margin-bottom:10px;">
+    <span style="font-size:11px;color:var(--muted);">Button grey? &nbsp;</span>
+    <button onclick="forceStart()" style="font-size:11px;color:var(--blue);background:none;border:none;cursor:pointer;text-decoration:underline;">Force Start</button>
+  </div>
   <div id="resultArea"></div>
 </div>
 
@@ -232,6 +236,7 @@ body{font-family:'Sora','Noto Sans SC',sans-serif;background:var(--paper);color:
 <div class="toast" id="toast"></div>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
 <script>
 // ── CONSTANTS ────────────────────────────────────────
 const CLIENT_ID = '297911594147-ig0jsulc8b225b2bfba5dv0rvp0029c2.apps.googleusercontent.com';
@@ -312,7 +317,6 @@ function loadFiles() {
       setPill('on', '● Drive Connected');
       showToast('✓ ' + allFiles.length + ' master files loaded');
       updateBtn();
-    })
     .catch(function(e) { setPill('off', '● Error'); showToast('❌ ' + e.message); });
 }
 
@@ -333,28 +337,70 @@ function handleFiles(e) {
 
 function loadImageFiles(files) {
   batchPhotos = [];
-  showToast('📷 Loading ' + files.length + ' images...');
+  showToast('📷 Converting & loading ' + files.length + ' images...');
   var promises = files.map(function(file) {
     return new Promise(function(res) {
-      var r = new FileReader();
-      r.onload = function(ev) {
-        batchPhotos.push({ name: file.name, b64: ev.target.result.split(',')[1], mime: file.type || 'image/jpeg', url: ev.target.result });
-        res();
-      };
-      r.readAsDataURL(file);
+      var isHeic = /\.(heic|heif)$/i.test(file.name) || file.type === 'image/heic' || file.type === 'image/heif';
+      if (isHeic && typeof heic2any !== 'undefined') {
+        // Convert HEIC to JPG using heic2any
+        heic2any({ blob: file, toType: 'image/jpeg', quality: 0.85 })
+          .then(function(jpgBlob) {
+            var reader = new FileReader();
+            reader.onload = function(ev) {
+              var dataUrl = ev.target.result;
+              batchPhotos.push({ name: file.name.replace(/\.(heic|heif)$/i, '.jpg'), b64: dataUrl.split(',')[1], mime: 'image/jpeg', url: dataUrl });
+              res();
+            };
+            reader.readAsDataURL(jpgBlob);
+          })
+          .catch(function() {
+            // Fallback: try reading as-is
+            readAsDataUrl(file, res);
+          });
+      } else {
+        readAsDataUrl(file, res);
+      }
     });
   });
   Promise.all(promises).then(function() {
+    batchPhotos = batchPhotos.filter(function(p) { return p.b64; });
     batchPhotos.sort(function(a, b) { return a.name.localeCompare(b.name); });
     document.getElementById('loadedInfo').style.display = 'block';
     document.getElementById('loadedBadge').textContent = '✓ ' + batchPhotos.length + ' photos ready';
     document.getElementById('thumbGrid').innerHTML = batchPhotos.map(function(p, i) {
-      return '<div class="thumb-wrap" id="tw' + i + '"><img class="thumb" src="' + p.url + '"><div class="ts ts-p" id="ts' + i + '">·</div></div>';
+      return '<div class="thumb-wrap" id="tw' + i + '"><img class="thumb" src="' + p.url + '" onerror="this.src=\'data:image/svg+xml,<svg xmlns=\\\'http://www.w3.org/2000/svg\\\' width=\\\'60\\\' height=\\\'60\\\'><rect fill=\\\'%23eee\\\' width=\\\'60\\\' height=\\\'60\\\'/><text x=\\\'50%25\\\' y=\\\'50%25\\\' text-anchor=\\\'middle\\\' dy=\\\'.3em\\\' font-size=\\\'10\\\'>IMG</text></svg>\'"><div class="ts ts-p" id="ts' + i + '">·</div></div>';
     }).join('');
     document.getElementById('pickZone').classList.add('loaded');
     updateBtn();
-    showToast('✓ ' + batchPhotos.length + ' photos loaded');
+    showToast('✓ ' + batchPhotos.length + ' photos ready to check');
   });
+}
+
+function readAsDataUrl(file, callback) {
+  var r = new FileReader();
+  r.onload = function(ev) {
+    var dataUrl = ev.target.result;
+    var mime = file.type && file.type.startsWith('image/') ? file.type : 'image/jpeg';
+    // Force jpeg mime for unknown types
+    if (mime === 'image/heic' || mime === 'image/heif') mime = 'image/jpeg';
+    batchPhotos.push({ name: file.name, b64: dataUrl.split(',')[1], mime: mime, url: dataUrl });
+    callback();
+  };
+  r.onerror = function() { callback(); };
+  r.readAsDataURL(file);
+}
+
+function convertToJpg(dataUrl, filename, callback) {
+  var img = new Image();
+  img.onload = function() {
+    var canvas = document.createElement('canvas');
+    canvas.width = img.width; canvas.height = img.height;
+    canvas.getContext('2d').drawImage(img, 0, 0);
+    var jpgUrl = canvas.toDataURL('image/jpeg', 0.92);
+    callback(jpgUrl, jpgUrl.split(',')[1]);
+  };
+  img.onerror = function() { callback(dataUrl, dataUrl.split(',')[1] || ''); };
+  img.src = dataUrl;
 }
 
 // ── DRAG & DROP ──────────────────────────────────────
@@ -408,8 +454,23 @@ function readEntry(entry, imageFiles) {
   return Promise.resolve();
 }
 
+function forceStart() {
+  if (!batchPhotos.length) { showToast('⚠ Upload photos first'); return; }
+  if (!gToken || !allFiles.length) { showToast('⚠ Connect Google Drive first'); return; }
+  document.getElementById('checkBtn').disabled = false;
+  runBatch();
+}
+
 function updateBtn() {
-  document.getElementById('checkBtn').disabled = !(batchPhotos.length > 0 && gToken && allFiles.length > 0);
+  var apiKey = localStorage.getItem('qc_apikey');
+  var hasPhotos = batchPhotos.length > 0;
+  var hasDrive = gToken && allFiles.length > 0;
+  var hasKey = apiKey && apiKey.length > 10;
+  document.getElementById('checkBtn').disabled = !(hasPhotos && hasDrive && hasKey);
+
+  // Show why button is disabled
+  if (hasPhotos && !hasDrive) showToast('⚠ Connect Google Drive first');
+  if (hasPhotos && hasDrive && !hasKey) showToast('⚠ Add API key in Settings');
 }
 
 // ── BATCH CHECK ──────────────────────────────────────
