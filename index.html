@@ -4,54 +4,57 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="theme-color" content="#0e1117">
 <title>品质 QC Checker</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=DM+Mono:wght@400;500&family=Sora:wght@400;600;800&display=swap" rel="stylesheet">
 <style>
 :root{--ink:#0e1117;--paper:#f5f2ec;--card:#fff;--red:#d4380d;--green:#237804;--orange:#d46b08;--border:#e0dbd0;--muted:#8c8070;--shadow:0 2px 20px rgba(14,17,23,0.08);--r:16px;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-body{font-family:'Sora','Noto Sans SC',sans-serif;background:var(--paper);color:var(--ink);min-height:100vh;max-width:480px;margin:0 auto;padding-bottom:40px;}
-.topnav{position:sticky;top:0;z-index:1000;background:var(--ink);padding:14px 18px 0;}
+body{font-family:'Sora','Noto Sans SC',sans-serif;background:var(--paper);color:var(--ink);min-height:100vh;max-width:520px;margin:0 auto;padding-bottom:40px;}
+.topnav{position:sticky;top:0;z-index:9999;background:var(--ink);padding:14px 18px 0;}
 .nav-top{display:flex;align-items:center;justify-content:space-between;padding-bottom:12px;}
-.app-title{color:#fff;font-size:19px;font-weight:800;}
+.app-title{color:#fff;font-size:19px;font-weight:800;letter-spacing:-0.5px;}
 .app-title span{color:#ff6b35;}
-.tabs{display:flex;gap:5px;padding-bottom:12px;position:relative;z-index:1001;}
-.tab{flex:1;padding:9px 0;text-align:center;font-size:12px;font-weight:600;border-radius:9px;cursor:pointer;color:rgba(255,255,255,0.4);border:none;background:transparent;font-family:'Sora',sans-serif;position:relative;z-index:1001;}
-.tab.active{background:rgba(255,255,255,0.14);color:#fff;}
-.drive-pill{font-size:11px;font-family:'DM Mono',monospace;padding:5px 12px;border-radius:20px;border:none;cursor:pointer;position:relative;z-index:1001;}
+.drive-pill{font-size:11px;font-family:'DM Mono',monospace;padding:5px 12px;border-radius:20px;border:none;cursor:pointer;z-index:9999;position:relative;}
 .drive-pill.off{background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.5);}
 .drive-pill.on{background:rgba(82,196,26,0.2);color:#52c41a;}
 .drive-pill.busy{background:rgba(255,179,71,0.2);color:#ffb347;}
+.tabs{display:flex;gap:5px;padding-bottom:12px;position:relative;z-index:9999;}
+.tab{flex:1;padding:9px 0;text-align:center;font-size:12px;font-weight:600;border-radius:9px;cursor:pointer;color:rgba(255,255,255,0.4);border:none;background:transparent;font-family:'Sora',sans-serif;position:relative;z-index:9999;}
+.tab.active{background:rgba(255,255,255,0.14);color:#fff;}
 .page{display:none;padding:18px;}
 .page.active{display:block;}
 .slabel{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;margin-top:20px;display:flex;align-items:center;gap:8px;}
 .slabel:first-child{margin-top:0;}
 .step-num{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--ink);color:#fff;font-size:10px;font-weight:700;flex-shrink:0;}
+.card{background:var(--card);border-radius:var(--r);border:1px solid var(--border);padding:16px;margin-bottom:14px;box-shadow:var(--shadow);}
 .connect-box{background:var(--card);border-radius:var(--r);border:2px dashed var(--border);padding:28px 20px;text-align:center;margin-bottom:12px;box-shadow:var(--shadow);}
 .connect-icon{font-size:40px;margin-bottom:10px;}
 .connect-title{font-size:15px;font-weight:700;margin-bottom:4px;}
 .connect-sub{font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6;}
-.upload-box{border:2.5px dashed var(--border);border-radius:var(--r);padding:26px 16px;text-align:center;cursor:pointer;position:relative;background:var(--card);box-shadow:var(--shadow);margin-bottom:10px;}
-.upload-box.loaded{border-style:solid;border-color:var(--ink);}
-.upload-box input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer;}
-.upload-icon{font-size:38px;margin-bottom:8px;}
-.upload-label{font-size:14px;font-weight:700;}
-.upload-sub{font-size:12px;color:var(--muted);margin-top:3px;}
+.upload-zone{border:2.5px dashed var(--border);border-radius:var(--r);padding:22px 16px;text-align:center;cursor:pointer;position:relative;background:var(--card);box-shadow:var(--shadow);margin-bottom:10px;transition:border-color 0.2s;}
+.upload-zone:hover{border-color:var(--ink);}
+.upload-zone.loaded{border-style:solid;border-color:var(--green);}
+.upload-zone input[type=file]{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer;}
+.upload-icon{font-size:36px;margin-bottom:8px;}
+.upload-label{font-size:14px;font-weight:700;color:var(--ink);}
+.upload-sub{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.5;}
 .upload-badge{display:inline-flex;align-items:center;gap:6px;margin-top:10px;background:#f0fdf4;border:1px solid #b7eb8f;color:var(--green);font-size:12px;font-weight:600;padding:5px 12px;border-radius:20px;font-family:'DM Mono',monospace;}
-.thumb-wrap{position:relative;width:72px;height:72px;}
-.thumb{width:72px;height:72px;border-radius:10px;object-fit:cover;border:2px solid var(--border);}
-.thumb-status{position:absolute;bottom:3px;right:3px;width:18px;height:18px;border-radius:50%;font-size:10px;display:flex;align-items:center;justify-content:center;font-weight:700;border:2px solid #fff;}
+.drop-zone{border:2.5px dashed var(--border);border-radius:var(--r);padding:22px 16px;text-align:center;background:var(--card);box-shadow:var(--shadow);margin-bottom:10px;transition:all 0.2s;}
+.drop-zone.drag-over{border-color:var(--ink);background:#f0f0e8;}
+.thumb-wrap{position:relative;width:60px;height:60px;}
+.thumb{width:60px;height:60px;border-radius:8px;object-fit:cover;border:2px solid var(--border);}
+.ts{position:absolute;bottom:2px;right:2px;width:16px;height:16px;border-radius:50%;font-size:9px;display:flex;align-items:center;justify-content:center;font-weight:700;border:2px solid #fff;}
 .ts-p{background:#ccc;color:#666;}
 .ts-c{background:var(--orange);color:#fff;}
 .ts-ok{background:var(--green);color:#fff;}
 .ts-no{background:var(--red);color:#fff;}
 .prog-wrap{margin-bottom:12px;display:none;}
-.prog-row{display:flex;justify-content:space-between;margin-bottom:6px;}
+.prog-row{display:flex;justify-content:space-between;margin-bottom:5px;}
 .prog-lbl{font-size:12px;color:var(--muted);font-family:'DM Mono',monospace;}
 .prog-track{height:3px;background:var(--border);border-radius:2px;overflow:hidden;}
 .prog-fill{height:100%;background:var(--ink);border-radius:2px;transition:width 0.4s;width:0%;}
-.btn{width:100%;padding:15px;border:none;border-radius:12px;font-size:15px;font-weight:700;font-family:'Sora',sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px;}
+.btn{width:100%;padding:14px;border:none;border-radius:12px;font-size:15px;font-weight:700;font-family:'Sora',sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px;}
 .btn-dark{background:var(--ink);color:#fff;box-shadow:0 4px 14px rgba(14,17,23,0.2);}
 .btn-dark:active{opacity:0.85;}
 .btn-google{background:#fff;color:#444;border:1.5px solid var(--border);box-shadow:var(--shadow);}
@@ -68,34 +71,33 @@ body{font-family:'Sora','Noto Sans SC',sans-serif;background:var(--paper);color:
 .b-item{padding:14px 16px;border-bottom:1px solid var(--border);cursor:pointer;}
 .b-item:last-child{border-bottom:none;}
 .b-top{display:flex;align-items:center;gap:10px;margin-bottom:4px;}
-.b-thumb{width:44px;height:44px;border-radius:8px;object-fit:cover;flex-shrink:0;}
+.b-thumb{width:44px;height:44px;border-radius:8px;object-fit:cover;flex-shrink:0;border:1px solid var(--border);}
 .b-name{font-size:14px;font-weight:700;line-height:1.3;}
 .b-en{font-size:11px;color:var(--muted);}
 .badge{display:inline-block;font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;}
 .b-pass{background:#f6ffed;color:var(--green);border:1px solid #b7eb8f;}
 .b-fail{background:#fff2e8;color:var(--red);border:1px solid #ffbb96;}
-.b-detail{display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
+.b-detail{display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);}
 .b-detail.open{display:block;}
-.frow{display:flex;align-items:flex-start;padding:6px 0;gap:8px;}
+.frow{display:flex;align-items:flex-start;padding:5px 0;gap:8px;}
 .fdot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:4px;}
 .dok{background:var(--green);}.dno{background:var(--red);}.dwarn{background:var(--orange);}
-.fname{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;}
+.fname{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:1px;}
 .fval{font-size:13px;color:var(--ink);}
-.fnote{font-size:12px;color:var(--red);font-weight:600;margin-top:2px;}
+.fnote{font-size:11px;color:var(--red);font-weight:600;margin-top:1px;}
 .log-item{background:var(--card);border-radius:14px;border:1px solid var(--border);padding:14px 16px;margin-bottom:10px;box-shadow:var(--shadow);}
-.log-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:5px;}
+.log-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px;}
 .log-name{font-size:15px;font-weight:700;flex:1;line-height:1.3;}
-.log-bdg{font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;flex-shrink:0;}
+.log-bdg{font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;flex-shrink:0;}
 .bok{background:#f6ffed;color:var(--green);border:1px solid #b7eb8f;}
 .bno{background:#fff2e8;color:var(--red);border:1px solid #ffbb96;}
-.log-meta{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;line-height:1.6;}
+.log-meta{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;line-height:1.7;}
 .log-empty{text-align:center;padding:60px 20px;color:var(--muted);font-size:14px;line-height:1.8;}
-.card{background:var(--card);border-radius:var(--r);border:1px solid var(--border);padding:16px;margin-bottom:14px;box-shadow:var(--shadow);}
 .set-row{display:flex;flex-direction:column;gap:5px;margin-bottom:13px;}
 .set-label{font-size:12px;font-weight:600;color:var(--muted);}
 .set-input{border:1.5px solid var(--border);border-radius:10px;padding:11px 13px;font-size:13px;font-family:'DM Mono',monospace;background:var(--paper);color:var(--ink);width:100%;outline:none;}
 .info-box{background:#fffbe6;border:1px solid #ffe58f;border-radius:10px;padding:12px 14px;font-size:12px;color:#7c5c00;line-height:1.7;margin-top:8px;}
-.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(16px);background:var(--ink);color:#fff;padding:12px 22px;border-radius:30px;font-size:13px;font-weight:600;opacity:0;transition:all 0.3s;pointer-events:none;z-index:999;max-width:88vw;text-align:center;white-space:nowrap;}
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(16px);background:var(--ink);color:#fff;padding:12px 22px;border-radius:30px;font-size:13px;font-weight:600;opacity:0;transition:all 0.3s;pointer-events:none;z-index:99999;max-width:88vw;text-align:center;white-space:nowrap;}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 </style>
 </head>
@@ -113,6 +115,7 @@ body{font-family:'Sora','Noto Sans SC',sans-serif;background:var(--paper);color:
   </div>
 </nav>
 
+<!-- SCAN -->
 <div class="page active" id="page-scan">
   <div class="slabel"><span class="step-num">1</span> Connect Google Drive</div>
   <div id="notConnected">
@@ -132,45 +135,49 @@ body{font-family:'Sora','Noto Sans SC',sans-serif;background:var(--paper);color:
     <button class="btn btn-outline btn-sm" onclick="loadFiles()">↻ Refresh files</button>
   </div>
 
-  <div class="slabel" style="margin-top:16px;"><span class="step-num">2</span> Select Label Photos</div>
-  <div class="upload-box" id="batchBox" id="dropZone">
-    <input type="file" id="batchInput" accept="image/*" multiple onchange="handleBatch(event)">
+  <div class="slabel" style="margin-top:18px;"><span class="step-num">2</span> Upload Label Photos</div>
+
+  <!-- Click to pick files -->
+  <div class="upload-zone" id="pickZone">
+    <input type="file" id="pickInput" accept="image/*" multiple onchange="handleFiles(event)">
     <div class="upload-icon">📷</div>
     <div class="upload-label">Click to select images</div>
-    <div class="upload-sub">iPhone: select multiple photos &nbsp;|&nbsp; Computer: select multiple image files</div>
-    <div id="batchBadge"></div>
+    <div class="upload-sub">Select multiple image files at once<br>(hold Ctrl to select many)</div>
   </div>
 
-  <!-- Drag & Drop zone for computer — supports multiple folders -->
-  <div id="dropZone" style="border:2.5px dashed var(--border);border-radius:var(--r);padding:24px 16px;text-align:center;background:var(--card);box-shadow:var(--shadow);margin-bottom:10px;transition:all 0.2s;position:relative;cursor:pointer;"
-    ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropFiles(event)">
-    <input type="file" id="dropInput" accept="image/*" multiple onchange="handleBatch(event)"
-      style="position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer;">
+  <!-- Drag & Drop zone -->
+  <div class="drop-zone" id="dropZone"
+    ondragenter="onDragEnter(event)"
+    ondragover="onDragOver(event)"
+    ondragleave="onDragLeave(event)"
+    ondrop="onDrop(event)">
     <div style="font-size:32px;margin-bottom:8px;">📁</div>
-    <div style="font-size:14px;font-weight:700;margin-bottom:3px;">Click or Drag &amp; Drop folders here</div>
-    <div style="font-size:12px;color:var(--muted);">Click to select multiple images &nbsp;|&nbsp; Drag one or multiple folders from Windows Explorer</div>
+    <div style="font-size:14px;font-weight:700;margin-bottom:4px;">Drag &amp; Drop folders here</div>
+    <div style="font-size:12px;color:var(--muted);">
+      In Windows Explorer: select all folders → drag here<br>
+      Supports multiple folders at once
+    </div>
   </div>
 
-  <div style="text-align:center;font-size:11px;color:var(--muted);margin:-4px 0 8px;">— or use folder picker (Chrome/Edge only) —</div>
-
-  <div class="upload-box" style="padding:12px 16px;margin-bottom:10px;">
-    <input type="file" id="folderInput" webkitdirectory multiple onchange="handleBatch(event)">
+  <!-- Folder picker (Chrome/Edge) -->
+  <div class="upload-zone" style="padding:12px 16px;">
+    <input type="file" id="folderInput" webkitdirectory multiple onchange="handleFiles(event)">
     <div style="display:flex;align-items:center;gap:10px;pointer-events:none;">
-      <div style="font-size:22px;">🗂️</div>
+      <span style="font-size:22px;">🗂️</span>
       <div>
         <div style="font-size:13px;font-weight:700;">Select single folder</div>
-        <div style="font-size:11px;color:var(--muted);">Chrome/Edge only — select one folder at a time</div>
+        <div style="font-size:11px;color:var(--muted);">Chrome/Edge: pick one folder at a time</div>
       </div>
     </div>
   </div>
 
-  <div id="thumbArea" style="display:none;margin-bottom:12px;">
-    <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Photos selected</div>
-    <div id="thumbGrid" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+  <div id="loadedInfo" style="display:none;">
+    <div id="loadedBadge" class="upload-badge" style="margin-bottom:10px;display:inline-flex;"></div>
+    <div id="thumbGrid" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;"></div>
   </div>
 
   <div style="background:#fffbe6;border:1px solid #ffe58f;border-radius:10px;padding:10px 14px;font-size:12px;color:#7c5c00;margin-bottom:12px;">
-    📌 LOT / 批号 and expiry date auto-detected from each photo
+    📌 LOT / 批号 and expiry date auto-detected from each photo by AI
   </div>
 
   <div class="prog-wrap" id="progWrap">
@@ -185,6 +192,7 @@ body{font-family:'Sora','Noto Sans SC',sans-serif;background:var(--paper);color:
   <div id="resultArea"></div>
 </div>
 
+<!-- LOG -->
 <div class="page" id="page-log">
   <div style="display:flex;gap:8px;margin-bottom:16px;">
     <button class="btn btn-outline btn-sm" style="flex:1;" onclick="exportCSV()">⬇ Export CSV</button>
@@ -193,6 +201,7 @@ body{font-family:'Sora','Noto Sans SC',sans-serif;background:var(--paper);color:
   <div id="logList"><div class="log-empty">No checks yet.<br>Go to Scan tab to start. 📷</div></div>
 </div>
 
+<!-- SETTINGS -->
 <div class="page" id="page-settings">
   <div class="slabel">Google Drive</div>
   <div class="card">
@@ -200,11 +209,10 @@ body{font-family:'Sora','Noto Sans SC',sans-serif;background:var(--paper);color:
       <img src="https://www.google.com/favicon.ico" width="14" height="14">&nbsp;Sign in with Google
     </button>
     <div class="set-row" style="margin-top:12px;">
-      <div class="set-label">Google Drive Folder Name</div>
+      <div class="set-label">Google Drive Folder Name (master Word files)</div>
       <input class="set-input" id="folderName" placeholder="registered product labels">
     </div>
-    <button class="btn btn-dark btn-sm" onclick="saveFolder()">💾 Save Folder Name</button>
-    <div class="info-box">Folder in Google Drive where your master Word files are stored.</div>
+    <button class="btn btn-dark btn-sm" onclick="saveFolder()">💾 Save</button>
   </div>
   <div class="slabel">Claude AI API Key</div>
   <div class="card">
@@ -215,569 +223,458 @@ body{font-family:'Sora','Noto Sans SC',sans-serif;background:var(--paper);color:
     <button class="btn btn-dark btn-sm" onclick="saveApiKey()">💾 Save API Key</button>
     <div class="info-box">Get at <b>console.anthropic.com</b> → add $5 credit · ~$0.02 per check</div>
   </div>
-  <div class="slabel">Add to iPhone Home Screen</div>
+  <div class="slabel">iPhone — Add to Home Screen</div>
   <div class="card" style="font-size:13px;color:var(--muted);line-height:2;">
-    In Safari → tap <b>📤 Share</b> → <b>Add to Home Screen</b> → Add
+    Safari → tap <b>📤 Share</b> → <b>Add to Home Screen</b> → Add
   </div>
 </div>
 
 <div class="toast" id="toast"></div>
-<script src="https://accounts.google.com/gsi/client" async defer onerror="console.log('GSI load error')"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
 <script>
-const CLIENT_ID='297911594147-ig0jsulc8b225b2bfba5dv0rvp0029c2.apps.googleusercontent.com';
-const SCOPES='https://www.googleapis.com/auth/drive.readonly';
-let gToken=null,allFiles=[],batchPhotos=[],checkLog=[];
+// ── CONSTANTS ────────────────────────────────────────
+const CLIENT_ID = '297911594147-ig0jsulc8b225b2bfba5dv0rvp0029c2.apps.googleusercontent.com';
+const SCOPES = 'https://www.googleapis.com/auth/drive.readonly';
 
-window.addEventListener('DOMContentLoaded',()=>{
-  document.getElementById('apiKey').value=localStorage.getItem('qc_apikey')||'';
-  document.getElementById('folderName').value=localStorage.getItem('qc_folder')||'registered product labels';
-  loadLog(); renderLog();
-  const t=sessionStorage.getItem('gtoken');
-  if(t){gToken=t;onSignedIn();}
+// ── STATE ────────────────────────────────────────────
+var gToken = null;
+var allFiles = [];
+var batchPhotos = [];
+var checkLog = [];
+
+// ── INIT ─────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', function() {
+  var k = localStorage.getItem('qc_apikey');
+  if (k) document.getElementById('apiKey').value = k;
+  var f = localStorage.getItem('qc_folder');
+  document.getElementById('folderName').value = f || 'registered product labels';
+  loadLog();
+  renderLog();
+  var t = sessionStorage.getItem('gtoken');
+  if (t) { gToken = t; onSignedIn(); }
 });
 
-function goTab(name){
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  const i=['scan','log','settings'].indexOf(name);
-  if(i>=0){document.querySelectorAll('.tab')[i].classList.add('active');document.getElementById('page-'+name).classList.add('active');}
-  if(name==='log')renderLog();
+// ── TABS ─────────────────────────────────────────────
+function goTab(name) {
+  document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+  document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+  var tabs = ['scan', 'log', 'settings'];
+  var i = tabs.indexOf(name);
+  if (i >= 0) {
+    document.querySelectorAll('.tab')[i].classList.add('active');
+    document.getElementById('page-' + name).classList.add('active');
+  }
+  if (name === 'log') renderLog();
 }
 
-function signIn(){
-  if(typeof google==='undefined'||!google.accounts){
-    showToast('⏳ Google loading... please wait');
-    setTimeout(signIn,2000);
+// ── GOOGLE SIGN IN ───────────────────────────────────
+function signIn() {
+  if (typeof google === 'undefined' || !google.accounts) {
+    showToast('⏳ Google loading... please wait 2 seconds and try again');
     return;
   }
-  try{
+  try {
     google.accounts.oauth2.initTokenClient({
-      client_id:CLIENT_ID,scope:SCOPES,
-      callback:(r)=>{
-        if(r.error){showToast('❌ '+r.error);return;}
-        gToken=r.access_token;sessionStorage.setItem('gtoken',gToken);onSignedIn();
+      client_id: CLIENT_ID,
+      scope: SCOPES,
+      callback: function(r) {
+        if (r.error) { showToast('❌ ' + r.error); return; }
+        gToken = r.access_token;
+        sessionStorage.setItem('gtoken', gToken);
+        onSignedIn();
       }
     }).requestAccessToken();
-  }catch(e){showToast('❌ '+e.message);}
+  } catch(e) { showToast('❌ ' + e.message); }
 }
 
-function onSignedIn(){
-  document.getElementById('notConnected').style.display='none';
-  document.getElementById('connectedArea').style.display='block';
-  setPill('on','● Drive Connected');
+function onSignedIn() {
+  document.getElementById('notConnected').style.display = 'none';
+  document.getElementById('connectedArea').style.display = 'block';
+  setPill('on', '● Drive Connected');
   loadFiles();
 }
 
-async function loadFiles(){
-  if(!gToken)return;
-  const folder=localStorage.getItem('qc_folder')||'registered product labels';
-  setPill('busy','● Loading...');
-  try{
-    const f=await gFetch(`https://www.googleapis.com/drive/v3/files?q=name='${encodeURIComponent(folder)}' and mimeType='application/vnd.google-apps.folder' and trashed=false&fields=files(id,name)`);
-    if(!f.files?.length){showToast('❌ Folder not found: '+folder);setPill('on','● Connected');return;}
-    const l=await gFetch(`https://www.googleapis.com/drive/v3/files?q='${f.files[0].id}' in parents and trashed=false and (name contains '.docx' or name contains '.doc')&fields=files(id,name,modifiedTime)&orderBy=name`);
-    allFiles=l.files||[];
-    document.getElementById('fileCount').textContent=allFiles.length;
-    setPill('on','● Drive Connected');
-    showToast('✓ '+allFiles.length+' master files loaded');
-    updateBtn();
-  }catch(e){setPill('off','● Error');showToast('❌ '+e.message);}
+// ── LOAD MASTER FILES ────────────────────────────────
+function loadFiles() {
+  if (!gToken) return;
+  var folder = localStorage.getItem('qc_folder') || 'registered product labels';
+  setPill('busy', '● Loading...');
+  gFetch('https://www.googleapis.com/drive/v3/files?q=name=\'' + encodeURIComponent(folder) + '\' and mimeType=\'application/vnd.google-apps.folder\' and trashed=false&fields=files(id,name)')
+    .then(function(f) {
+      if (!f.files || !f.files.length) { showToast('❌ Folder not found: ' + folder); setPill('on', '● Connected'); return; }
+      return gFetch('https://www.googleapis.com/drive/v3/files?q=\'' + f.files[0].id + '\' in parents and trashed=false and (name contains \'.docx\' or name contains \'.doc\')&fields=files(id,name,modifiedTime)&orderBy=name');
+    })
+    .then(function(l) {
+      if (!l) return;
+      allFiles = l.files || [];
+      document.getElementById('fileCount').textContent = allFiles.length;
+      setPill('on', '● Drive Connected');
+      showToast('✓ ' + allFiles.length + ' master files loaded');
+      updateBtn();
+    })
+    .catch(function(e) { setPill('off', '● Error'); showToast('❌ ' + e.message); });
 }
 
-function setPill(c,t){const p=document.getElementById('drivePill');p.className='drive-pill '+c;p.textContent=t;}
-
-async function handleBatch(e){
-  const files=Array.from(e.target.files).filter(f=>f.type.startsWith('image/'));
-  if(!files.length){showToast('No images found');return;}
-  await loadImageFiles(files);
+function setPill(c, t) {
+  var p = document.getElementById('drivePill');
+  p.className = 'drive-pill ' + c;
+  p.textContent = t;
 }
 
-async function loadImageFiles(files){
-  batchPhotos=[];
-  showToast(`📷 Loading ${files.length} images...`);
-  await Promise.all(files.map(file=>new Promise(res=>{
-    const r=new FileReader();
-    r.onload=ev=>{batchPhotos.push({name:file.name,b64:ev.target.result.split(',')[1],mime:file.type||'image/jpeg',url:ev.target.result});res();};
-    r.readAsDataURL(file);
-  })));
-  batchPhotos.sort((a,b)=>a.name.localeCompare(b.name));
-  document.getElementById('thumbArea').style.display='block';
-  document.getElementById('thumbGrid').innerHTML=batchPhotos.map((p,i)=>`<div class="thumb-wrap" id="tw${i}"><img class="thumb" src="${p.url}"><div class="thumb-status ts-p" id="ts${i}">·</div></div>`).join('');
-  document.getElementById('batchBox').classList.add('loaded');
-  document.getElementById('batchBadge').innerHTML=`<div class="upload-badge">✓ ${batchPhotos.length} photos ready</div>`;
-  updateBtn();
-  showToast('✓ '+batchPhotos.length+' photos loaded');
+// ── FILE UPLOAD ──────────────────────────────────────
+function handleFiles(e) {
+  var files = Array.from(e.target.files).filter(function(f) {
+    return f.type.startsWith('image/') || /\.(jpg|jpeg|png|heic|bmp|webp|gif)$/i.test(f.name);
+  });
+  if (!files.length) { showToast('No image files found'); return; }
+  loadImageFiles(files);
 }
 
-// ── DRAG & DROP — supports multiple folders ───────────
-function dragOver(e){
-  e.preventDefault();e.stopPropagation();
-  const z=document.getElementById('dropZone');
-  z.style.borderColor='var(--ink)';z.style.background='#f0f0e8';
-}
-function dragLeave(e){
-  const z=document.getElementById('dropZone');
-  z.style.borderColor='var(--border)';z.style.background='var(--card)';
-}
-async function dropFiles(e){
-  e.preventDefault();e.stopPropagation();
-  dragLeave(e);
-  showToast('📁 Reading folders...');
-  const items=Array.from(e.dataTransfer.items);
-  const imageFiles=[];
-  await Promise.all(items.map(item=>{
-    const entry=item.webkitGetAsEntry&&item.webkitGetAsEntry();
-    if(entry) return readEntry(entry,imageFiles);
-    const file=item.getAsFile();
-    if(file&&file.type.startsWith('image/'))imageFiles.push(file);
-    return Promise.resolve();
-  }));
-  if(!imageFiles.length){showToast('❌ No images found in dropped folders');return;}
-  await loadImageFiles(imageFiles);
-}
-
-async function readEntry(entry,imageFiles){
-  if(entry.isFile){
-    return new Promise(res=>{
-      entry.file(file=>{
-        if(file.type.startsWith('image/')||/\.(jpg|jpeg|png|heic|bmp|webp|gif)$/i.test(file.name))imageFiles.push(file);
+function loadImageFiles(files) {
+  batchPhotos = [];
+  showToast('📷 Loading ' + files.length + ' images...');
+  var promises = files.map(function(file) {
+    return new Promise(function(res) {
+      var r = new FileReader();
+      r.onload = function(ev) {
+        batchPhotos.push({ name: file.name, b64: ev.target.result.split(',')[1], mime: file.type || 'image/jpeg', url: ev.target.result });
         res();
-      },()=>res());
-    });
-  } else if(entry.isDirectory){
-    const reader=entry.createReader();
-    return new Promise(res=>{
-      const readAll=()=>{
-        reader.readEntries(async entries=>{
-          if(!entries.length){res();return;}
-          await Promise.all(entries.map(e=>readEntry(e,imageFiles)));
-          readAll();
-        },()=>res());
       };
+      r.readAsDataURL(file);
+    });
+  });
+  Promise.all(promises).then(function() {
+    batchPhotos.sort(function(a, b) { return a.name.localeCompare(b.name); });
+    document.getElementById('loadedInfo').style.display = 'block';
+    document.getElementById('loadedBadge').textContent = '✓ ' + batchPhotos.length + ' photos ready';
+    document.getElementById('thumbGrid').innerHTML = batchPhotos.map(function(p, i) {
+      return '<div class="thumb-wrap" id="tw' + i + '"><img class="thumb" src="' + p.url + '"><div class="ts ts-p" id="ts' + i + '">·</div></div>';
+    }).join('');
+    document.getElementById('pickZone').classList.add('loaded');
+    updateBtn();
+    showToast('✓ ' + batchPhotos.length + ' photos loaded');
+  });
+}
+
+// ── DRAG & DROP ──────────────────────────────────────
+function onDragEnter(e) { e.preventDefault(); e.stopPropagation(); }
+function onDragOver(e) {
+  e.preventDefault(); e.stopPropagation();
+  document.getElementById('dropZone').classList.add('drag-over');
+}
+function onDragLeave(e) {
+  document.getElementById('dropZone').classList.remove('drag-over');
+}
+function onDrop(e) {
+  e.preventDefault(); e.stopPropagation();
+  document.getElementById('dropZone').classList.remove('drag-over');
+  showToast('📁 Reading folders...');
+  var items = Array.from(e.dataTransfer.items);
+  var imageFiles = [];
+  var promises = items.map(function(item) {
+    var entry = item.webkitGetAsEntry ? item.webkitGetAsEntry() : null;
+    if (entry) return readEntry(entry, imageFiles);
+    var file = item.getAsFile();
+    if (file && (file.type.startsWith('image/') || /\.(jpg|jpeg|png|heic|bmp|webp)$/i.test(file.name))) imageFiles.push(file);
+    return Promise.resolve();
+  });
+  Promise.all(promises).then(function() {
+    if (!imageFiles.length) { showToast('❌ No images found in dropped folders'); return; }
+    loadImageFiles(imageFiles);
+  });
+}
+
+function readEntry(entry, imageFiles) {
+  if (entry.isFile) {
+    return new Promise(function(res) {
+      entry.file(function(file) {
+        if (file.type.startsWith('image/') || /\.(jpg|jpeg|png|heic|bmp|webp)$/i.test(file.name)) imageFiles.push(file);
+        res();
+      }, function() { res(); });
+    });
+  } else if (entry.isDirectory) {
+    var reader = entry.createReader();
+    return new Promise(function(res) {
+      function readAll() {
+        reader.readEntries(function(entries) {
+          if (!entries.length) { res(); return; }
+          Promise.all(entries.map(function(e) { return readEntry(e, imageFiles); })).then(readAll);
+        }, function() { res(); });
+      }
       readAll();
     });
   }
+  return Promise.resolve();
 }
 
-function updateBtn(){document.getElementById('checkBtn').disabled=!(batchPhotos.length>0&&gToken&&allFiles.length>0);}
+function updateBtn() {
+  document.getElementById('checkBtn').disabled = !(batchPhotos.length > 0 && gToken && allFiles.length > 0);
+}
 
-async function runBatch(){
-  const apiKey=localStorage.getItem('qc_apikey');
-  if(!apiKey){
-    document.getElementById('resultArea').innerHTML=`<div style="background:#fff2e8;border:1px solid #ffbb96;border-radius:12px;padding:16px;margin-top:12px;font-size:14px;color:var(--red);">
-      ⚠️ <b>API Key missing!</b><br><br>Go to <b>⚙ Settings</b> tab → paste your Anthropic API key → tap Save.<br><br>
-      Get key at: <b>console.anthropic.com</b>
-    </div>`;
+// ── BATCH CHECK ──────────────────────────────────────
+function runBatch() {
+  var apiKey = localStorage.getItem('qc_apikey');
+  if (!apiKey) {
+    document.getElementById('resultArea').innerHTML = '<div style="background:#fff2e8;border:1px solid #ffbb96;border-radius:12px;padding:16px;margin-top:12px;font-size:14px;color:var(--red);">⚠️ <b>API Key missing!</b><br><br>Go to <b>⚙ Settings</b> tab → paste your Anthropic API key → Save.</div>';
     return;
   }
-  if(!allFiles.length){showToast('⚠ Connect Google Drive first');return;}
-  const total=batchPhotos.length;
+  if (!allFiles.length) { showToast('⚠ Connect Google Drive first'); return; }
+  var total = batchPhotos.length;
+  if (total > 50 && !confirm('You selected ' + total + ' photos. This may take ' + Math.round(total * 0.5) + '+ minutes. Continue?')) return;
 
-  // Warn if too many photos
-  if(total>50){
-    if(!confirm(`You selected ${total} photos. This will use ~${total*2} AI calls and may take ${Math.round(total*0.5)} minutes. Continue?`))return;
-  }
+  document.getElementById('checkBtn').disabled = true;
+  document.getElementById('progWrap').style.display = 'block';
+  document.getElementById('resultArea').innerHTML =
+    '<div class="batch-summary" id="liveSummary">' +
+    '<div class="sum-head"><div style="font-size:26px;" id="sumIcon">⏳</div>' +
+    '<div><div style="font-size:17px;font-weight:800;">Checking...</div>' +
+    '<div style="font-size:12px;color:var(--muted);" id="sumSub">0 of ' + total + ' photos done</div></div></div>' +
+    '<div class="batch-stats">' +
+    '<div class="stat s-all">📋 <span id="cntT">0</span></div>' +
+    '<div class="stat s-ok">✓ <span id="cntP">0</span> Pass</div>' +
+    '<div class="stat s-no">✗ <span id="cntF">0</span> Fail</div>' +
+    '</div><div id="liveRows"></div></div>';
 
-  document.getElementById('checkBtn').disabled=true;
-  document.getElementById('progWrap').style.display='block';
+  var passCount = 0, failCount = 0, totalProds = 0;
 
-  // Show live results container immediately
-  document.getElementById('resultArea').innerHTML=`
-    <div class="batch-summary" id="liveSummary">
-      <div class="sum-head">
-        <div style="font-size:26px;" id="sumIcon">⏳</div>
-        <div>
-          <div style="font-size:17px;font-weight:800;">Checking in progress...</div>
-          <div style="font-size:12px;color:var(--muted);" id="sumSubtitle">0 of ${total} photos done</div>
-        </div>
-      </div>
-      <div class="batch-stats">
-        <div class="stat s-all">📋 <span id="cntTotal">0</span></div>
-        <div class="stat s-ok">✓ <span id="cntPass">0</span> Pass</div>
-        <div class="stat s-no">✗ <span id="cntFail">0</span> Fail</div>
-      </div>
-      <div id="liveResults"></div>
-    </div>`;
+  // Process photos one by one using promise chain
+  var chain = Promise.resolve();
+  batchPhotos.forEach(function(photo, i) {
+    chain = chain.then(function() {
+      setThumb(i, 'ts-c', '⏳');
+      setProgress(Math.round(i / total * 100), 'Photo ' + (i+1) + ' of ' + total + ': ' + photo.name);
+      document.getElementById('progCount').textContent = (i+1) + '/' + total;
+      document.getElementById('sumSub').textContent = i + ' of ' + total + ' done — ' + totalProds + ' products found';
 
-  let passCount=0,failCount=0,totalProducts=0;
-  const allResults=[];
-
-  for(let i=0;i<total;i++){
-    const photo=batchPhotos[i];
-    setThumb(i,'ts-c','⏳');
-    setProgress(Math.round(i/total*100),`Photo ${i+1} of ${total}: ${photo.name}`);
-    document.getElementById('progCount').textContent=`${i+1}/${total}`;
-    document.getElementById('sumSubtitle').textContent=`${i} of ${total} photos done — ${totalProducts} products found`;
-
-    try{
-      // Detect all products in photo
-      const detectRaw=await claude(apiKey,[
-        {type:'image',source:{type:'base64',media_type:photo.mime,data:photo.b64}},
-        {type:'text',text:`Look at this photo carefully. It may show ONE or MULTIPLE product labels.
-For EACH product label visible, READ THE TEXT DIRECTLY FROM THE LABEL IMAGE:
-- Chinese product name (中文名称) — read exactly from label
-- English product name — read exactly from label
-- LOT number / 批号 — read exactly from label
-- Expiry date / 有效期 — read exactly from label
-
-Available master files to match:
-${allFiles.map((f,idx)=>`${idx}: ${f.name}`).join('\n')}
-
-Return ONLY raw JSON array — one entry per product found:
-[{"file_index":0,"product_name_zh":"EXACT Chinese name from label","product_name_en":"EXACT English name from label","lot_on_label":"EXACT LOT from label or null","expiry_date":"EXACT expiry from label or null"}]
-If only one product, still return as array with one item.`}
-      ]);
-
-      let products=[];
-      try{
-        const cleaned=detectRaw.replace(/```json|```/g,'').trim();
-        const arr=cleaned.match(/\[[\s\S]*\]/);
-        products=arr?JSON.parse(arr[0]):[];
-      }catch(e){products=[];}
-      if(!products.length)products=[{file_index:0,product_name_zh:'',product_name_en:'',lot_on_label:null,expiry_date:null}];
-
-      let photoAnyFail=false;
-
-      for(let p=0;p<products.length;p++){
-        const prod=products[p];
-        const mf=allFiles[Math.min(parseInt(prod.file_index)||0,allFiles.length-1)];
-        const arrayBuffer=await gDownload(mf.id);
-        const docText=await extractDocxText(arrayBuffer);
-        const cRaw=await claude(apiKey,[
-          {type:'image',source:{type:'base64',media_type:photo.mime,data:photo.b64}},
-          {type:'text',text:`You are a bilingual product QC expert.
-This photo may contain multiple products. Focus ONLY on: "${prod.product_name_zh||prod.product_name_en||mf.name}"
-
-Compare against MASTER WORD DOCUMENT (source of truth).
-Master: ${mf.name}
-MASTER TEXT:
----
-${docText||'(use filename: '+mf.name+')'}
----
-
-Check ALL fields. IMPORTANT RULES:
-- Field in BOTH → MATCH or MISMATCH
-- Field on label but NOT in master → NOT_IN_MASTER (not a failure)
-- Field in master not on label → NOT_VISIBLE (not a failure)
-- overall FAIL only if MISMATCH found
-
-Return ONLY raw JSON:
-{"product_name_zh":"exact from photo","product_name_en":"exact from photo","lot_on_label":"exact from photo or null","expiry_date":"exact from photo or null","overall":"PASS or FAIL","summary_zh":"一句话","summary_en":"one sentence","fields":[{"field":"","field_zh":"","label_value":"","master_value":"","status":"MATCH or MISMATCH or NOT_VISIBLE or NOT_IN_MASTER","note":""}]}`}
-        ]);
-
-        const result=JSON.parse(cRaw.replace(/```json|```/g,'').trim().match(/\{[\s\S]*\}/)[0]);
-        const ok=result.overall==='PASS';
-        if(!ok)photoAnyFail=true;
-        if(ok)passCount++;else failCount++;
-        totalProducts++;
-
-        // Update summary counts live
-        document.getElementById('cntTotal').textContent=totalProducts;
-        document.getElementById('cntPass').textContent=passCount;
-        document.getElementById('cntFail').textContent=failCount;
-        document.getElementById('sumIcon').textContent=failCount>0?'⚠️':'✅';
-
-        // Save log
-        const logEntry={
-          timestamp:new Date().toISOString(),
-          product_name_zh:result.product_name_zh||prod.product_name_zh||mf.name,
-          product_name_en:result.product_name_en||prod.product_name_en||'',
-          lot:result.lot_on_label||prod.lot_on_label||'—',
-          expiry:result.expiry_date||prod.expiry_date||'',
-          master_file:mf.name,
-          photo_name:photo.name,
-          overall:result.overall,
-          summary_en:result.summary_en||'',
-          mismatch_count:(result.fields||[]).filter(f=>f.status==='MISMATCH').length
-        };
-        checkLog.unshift(logEntry);
-        localStorage.setItem('qc_log',JSON.stringify(checkLog.slice(0,5000)));
-
-        // Add result row live
-        const mis=(result.fields||[]).filter(f=>f.status==='MISMATCH').length;
-        const multiTag=products.length>1?` <span style="font-size:9px;background:#e6f4ff;color:#1677ff;padding:1px 5px;border-radius:6px;">P${p+1}/${products.length}</span>`:'';
-        const fields=(result.fields||[]).map(f=>{
-          const dc=f.status==='MATCH'?'dok':f.status==='MISMATCH'?'dno':'dwarn';
-          const tag=f.status==='NOT_IN_MASTER'?'<span style="background:#f5f5f5;color:#999;font-size:9px;padding:1px 5px;border-radius:4px;margin-left:4px;">NOT IN MASTER</span>':f.status==='NOT_VISIBLE'?'<span style="background:#f5f5f5;color:#999;font-size:9px;padding:1px 5px;border-radius:4px;margin-left:4px;">NOT VISIBLE</span>':'';
-          return `<div class="frow"><div class="fdot ${dc}"></div><div>
-            <div class="fname">${f.field}${f.field_zh?' / '+f.field_zh:''}${tag}</div>
-            <div class="fval">${f.label_value||'—'}</div>
-            ${f.status==='MISMATCH'&&f.master_value?`<div class="fnote">✦ Master: ${f.master_value}</div>`:''}
-            ${f.note?`<div class="fnote">⚠ ${f.note}</div>`:''}
-          </div></div>`;
-        }).join('');
-
-        const rowId=`r${i}_${p}`;
-        const newRow=`<div class="b-item" style="border-left:3px solid ${ok?'var(--green)':'var(--red)'};" onclick="toggleD('${rowId}')">
-          <div class="b-top">
-            <img class="b-thumb" src="${photo.url}">
-            <div style="flex:1;min-width:0;">
-              <div class="b-name">${result.product_name_zh||prod.product_name_zh||mf.name}${multiTag}</div>
-              <div class="b-en">${result.product_name_en||prod.product_name_en||''}</div>
-              <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px;">
-                LOT: ${result.lot_on_label||'—'}${result.expiry_date?' · Exp: '+result.expiry_date:''}
-              </div>
-              <div style="font-size:10px;color:var(--muted);margin-top:1px;">📷 ${photo.name}</div>
-            </div>
-            <div class="badge ${ok?'b-pass':'b-fail'}">${ok?'PASS ✓':`FAIL ✗${mis?' ('+mis+')':''}`}</div>
-          </div>
-          ${result.summary_zh?`<div style="font-size:12px;color:var(--muted);margin-top:4px;">${result.summary_zh}</div>`:''}
-          <div class="b-detail" id="bd${rowId}">${fields}</div>
-          <div style="font-size:11px;color:var(--muted);text-align:right;margin-top:4px;">tap to see details ▾</div>
-        </div>`;
-
-        // Prepend FAIL, append PASS so fails show at top
-        const liveEl=document.getElementById('liveResults');
-        if(ok){
-          liveEl.insertAdjacentHTML('beforeend',newRow);
-        }else{
-          liveEl.insertAdjacentHTML('afterbegin',newRow);
+      // Step 1: detect products in photo
+      return callClaude(apiKey, [
+        { type: 'image', source: { type: 'base64', media_type: photo.mime, data: photo.b64 } },
+        { type: 'text', text:
+          'Look at this photo carefully. It may show ONE or MULTIPLE product labels.\n' +
+          'For EACH product label visible, READ TEXT DIRECTLY FROM THE LABEL:\n' +
+          '- Chinese product name (中文名称)\n- English product name\n- LOT/批号\n- Expiry date/有效期\n\n' +
+          'Available master files:\n' + allFiles.map(function(f,idx){return idx+': '+f.name;}).join('\n') + '\n\n' +
+          'Return ONLY raw JSON array:\n' +
+          '[{"file_index":0,"product_name_zh":"exact Chinese name","product_name_en":"exact English name","lot_on_label":"exact LOT or null","expiry_date":"exact expiry or null"}]\n' +
+          'If only one product, still return as array with one item.'
         }
-        allResults.push({photo,mf:mf.name,result,logEntry});
-      }
+      ])
+      .then(function(detectRaw) {
+        var products = [];
+        try {
+          var cleaned = detectRaw.replace(/```json|```/g, '').trim();
+          var arr = cleaned.match(/\[[\s\S]*\]/);
+          if (arr) products = JSON.parse(arr[0]);
+        } catch(e) {}
+        if (!products.length) products = [{ file_index: 0, product_name_zh: '', product_name_en: '', lot_on_label: null, expiry_date: null }];
 
-      setThumb(i,photoAnyFail?'ts-no':'ts-ok',photoAnyFail?'✗':'✓');
+        // Step 2: compare each product
+        var photoFail = false;
+        var prodChain = Promise.resolve();
+        products.forEach(function(prod, p) {
+          prodChain = prodChain.then(function() {
+            var mf = allFiles[Math.min(parseInt(prod.file_index) || 0, allFiles.length - 1)];
+            return gDownload(mf.id)
+              .then(function(ab) { return extractDocxText(ab); })
+              .then(function(docText) {
+                return callClaude(apiKey, [
+                  { type: 'image', source: { type: 'base64', media_type: photo.mime, data: photo.b64 } },
+                  { type: 'text', text:
+                    'Bilingual product QC expert. Focus ONLY on: "' + (prod.product_name_zh || prod.product_name_en || mf.name) + '"\n' +
+                    'Compare against MASTER WORD DOCUMENT (source of truth).\nMaster: ' + mf.name + '\n\nMASTER TEXT:\n---\n' + (docText || '(use filename: ' + mf.name + ')') + '\n---\n\n' +
+                    'Check: 中文名, English name, 描述, description, barcode/条形码, 净重, LOT/批号, expiry/有效期, 成分/ingredients.\n\n' +
+                    'RULES:\n- Both label+master: MATCH or MISMATCH\n- On label, not in master: NOT_IN_MASTER (not a failure)\n- In master, not on label: NOT_VISIBLE (not a failure)\n- overall FAIL only if MISMATCH found\n\n' +
+                    'Return ONLY raw JSON:\n{"product_name_zh":"exact from photo","product_name_en":"exact from photo","lot_on_label":"exact from photo or null","expiry_date":"exact from photo or null","overall":"PASS or FAIL","summary_zh":"一句话","summary_en":"one sentence","fields":[{"field":"","field_zh":"","label_value":"","master_value":"","status":"MATCH or MISMATCH or NOT_VISIBLE or NOT_IN_MASTER","note":""}]}'
+                  }
+                ]);
+              })
+              .then(function(cRaw) {
+                var result = JSON.parse(cRaw.replace(/```json|```/g, '').trim().match(/\{[\s\S]*\}/)[0]);
+                var ok = result.overall === 'PASS';
+                if (!ok) photoFail = true;
+                if (ok) passCount++; else failCount++;
+                totalProds++;
 
-    }catch(err){
-      setThumb(i,'ts-no','!');
-      failCount++;totalProducts++;
-      document.getElementById('cntTotal').textContent=totalProducts;
-      document.getElementById('cntFail').textContent=failCount;
-      const liveEl=document.getElementById('liveResults');
-      liveEl.insertAdjacentHTML('afterbegin',`<div class="b-item" style="border-left:3px solid var(--red);">
-        <div class="b-top">
-          <img class="b-thumb" src="${photo.url}">
-          <div style="flex:1;"><div class="b-name" style="color:var(--red);">Error</div>
-          <div class="b-en">${photo.name}</div>
-          <div style="font-size:12px;color:var(--red);margin-top:4px;">${err.message}</div></div>
-          <div class="badge b-fail">ERROR</div>
-        </div>
-      </div>`);
-    }
-  }
+                document.getElementById('cntT').textContent = totalProds;
+                document.getElementById('cntP').textContent = passCount;
+                document.getElementById('cntF').textContent = failCount;
+                document.getElementById('sumIcon').textContent = failCount > 0 ? '⚠️' : '✅';
 
-  setProgress(100,'✓ All done!');
-  document.getElementById('progCount').textContent=`${total}/${total}`;
-  document.getElementById('sumSubtitle').textContent=`${total} photos · ${totalProducts} products checked`;
-  document.getElementById('sumIcon').textContent=failCount===0?'✅':'⚠️';
-  document.getElementById('checkBtn').disabled=false;
-  showToast(`✓ Done! ${passCount} pass, ${failCount} fail`);
-}
-  document.getElementById('checkBtn').disabled=true;
-  document.getElementById('progWrap').style.display='block';
-  document.getElementById('resultArea').innerHTML='';
-  const results=[];
-  for(let i=0;i<total;i++){
-    const photo=batchPhotos[i];
-    setThumb(i,'ts-c','⏳');
-    setProgress(Math.round(i/total*100),`Checking photo ${i+1} of ${total}...`);
-    document.getElementById('progCount').textContent=`${i+1}/${total}`;
-    try{
-      // Step 1: Detect ALL products visible in this photo
-      const detectRaw=await claude(apiKey,[
-        {type:'image',source:{type:'base64',media_type:photo.mime,data:photo.b64}},
-        {type:'text',text:`Look at this photo carefully. It may show ONE or MULTIPLE product labels.
-For EACH product label visible, READ THE TEXT DIRECTLY FROM THE LABEL IMAGE:
-- Chinese product name (中文名称) — read exactly from label
-- English product name — read exactly from label  
-- LOT number / 批号 — read exactly from label
-- Expiry date / 有效期 — read exactly from label
+                // Save log
+                checkLog.unshift({
+                  timestamp: new Date().toISOString(),
+                  product_name_zh: result.product_name_zh || prod.product_name_zh || mf.name,
+                  product_name_en: result.product_name_en || prod.product_name_en || '',
+                  lot: result.lot_on_label || prod.lot_on_label || '—',
+                  expiry: result.expiry_date || prod.expiry_date || '',
+                  master_file: mf.name,
+                  photo_name: photo.name,
+                  overall: result.overall,
+                  mismatch_count: (result.fields || []).filter(function(f) { return f.status === 'MISMATCH'; }).length
+                });
+                localStorage.setItem('qc_log', JSON.stringify(checkLog.slice(0, 5000)));
 
-Available master files to match:
-${allFiles.map((f,idx)=>`${idx}: ${f.name}`).join('\n')}
+                // Render row
+                var mis = (result.fields || []).filter(function(f) { return f.status === 'MISMATCH'; }).length;
+                var multiTag = products.length > 1 ? '<span style="font-size:9px;background:#e6f4ff;color:#1677ff;padding:1px 5px;border-radius:6px;margin-left:4px;">P' + (p+1) + '/' + products.length + '</span>' : '';
+                var fields = (result.fields || []).map(function(f) {
+                  var dc = f.status === 'MATCH' ? 'dok' : f.status === 'MISMATCH' ? 'dno' : 'dwarn';
+                  var tag = f.status === 'NOT_IN_MASTER' ? '<span style="background:#f5f5f5;color:#999;font-size:9px;padding:1px 4px;border-radius:3px;margin-left:3px;">NOT IN MASTER</span>' :
+                            f.status === 'NOT_VISIBLE' ? '<span style="background:#f5f5f5;color:#999;font-size:9px;padding:1px 4px;border-radius:3px;margin-left:3px;">NOT VISIBLE</span>' : '';
+                  return '<div class="frow"><div class="fdot ' + dc + '"></div><div>' +
+                    '<div class="fname">' + f.field + (f.field_zh ? ' / ' + f.field_zh : '') + tag + '</div>' +
+                    '<div class="fval">' + (f.label_value || '—') + '</div>' +
+                    (f.status === 'MISMATCH' && f.master_value ? '<div class="fnote">✦ Master: ' + f.master_value + '</div>' : '') +
+                    (f.note ? '<div class="fnote">⚠ ' + f.note + '</div>' : '') +
+                    '</div></div>';
+                }).join('');
 
-Return ONLY raw JSON array — one entry per product found:
-[{"file_index":0,"product_name_zh":"EXACT Chinese name from label","product_name_en":"EXACT English name from label","lot_on_label":"EXACT LOT from label or null","expiry_date":"EXACT expiry from label or null"}]
-If only one product, still return as array with one item.`}
-      ]);
-      let products=[];
-      try{
-        const cleaned=detectRaw.replace(/```json|```/g,'').trim();
-        const arr=cleaned.match(/\[[\s\S]*\]/);
-        products=arr?JSON.parse(arr[0]):[];
-      }catch(e){products=[];}
-      if(!products.length)products=[{file_index:0,product_name_zh:'',product_name_en:'',lot_on_label:null,expiry_date:null}];
+                var rid = 'r' + i + '_' + p;
+                var row = '<div class="b-item" style="border-left:3px solid ' + (ok ? 'var(--green)' : 'var(--red)') + ';" onclick="toggleD(\'' + rid + '\')">' +
+                  '<div class="b-top">' +
+                  '<img class="b-thumb" src="' + photo.url + '">' +
+                  '<div style="flex:1;min-width:0;">' +
+                  '<div class="b-name">' + (result.product_name_zh || prod.product_name_zh || mf.name) + multiTag + '</div>' +
+                  '<div class="b-en">' + (result.product_name_en || prod.product_name_en || '') + '</div>' +
+                  '<div style="font-size:11px;color:var(--muted);font-family:\'DM Mono\',monospace;margin-top:2px;">LOT: ' + (result.lot_on_label || '—') + (result.expiry_date ? ' · Exp: ' + result.expiry_date : '') + '</div>' +
+                  '<div style="font-size:10px;color:var(--muted);margin-top:1px;">📷 ' + photo.name + '</div>' +
+                  '</div>' +
+                  '<div class="badge ' + (ok ? 'b-pass' : 'b-fail') + '">' + (ok ? 'PASS ✓' : 'FAIL ✗' + (mis ? ' (' + mis + ')' : '')) + '</div>' +
+                  '</div>' +
+                  (result.summary_zh ? '<div style="font-size:12px;color:var(--muted);margin-top:4px;">' + result.summary_zh + '</div>' : '') +
+                  '<div class="b-detail" id="bd' + rid + '">' + fields + '</div>' +
+                  '<div style="font-size:11px;color:var(--muted);text-align:right;margin-top:4px;">tap to see details ▾</div>' +
+                  '</div>';
 
-      // Step 2: For each product found, do full comparison
-      const photoResults=[];
-      for(let p=0;p<products.length;p++){
-        const prod=products[p];
-        const mf=allFiles[Math.min(parseInt(prod.file_index)||0,allFiles.length-1)];
-        const arrayBuffer=await gDownload(mf.id);
-        const docText=await extractDocxText(arrayBuffer);
-        const cRaw=await claude(apiKey,[
-          {type:'image',source:{type:'base64',media_type:photo.mime,data:photo.b64}},
-          {type:'text',text:`You are a bilingual product QC expert.
-This photo may contain multiple products. Focus ONLY on this specific product: "${prod.product_name_zh||prod.product_name_en||mf.name}"
-
-Compare it against this MASTER WORD DOCUMENT (source of truth).
-Master file: ${mf.name}
-
-MASTER DOCUMENT TEXT:
----
-${docText||'(use filename: '+mf.name+')'}
----
-
-Check ALL fields for this specific product:
-- 中文产品名称 / Chinese product name
-- English product name
-- 中文描述 / Chinese description
-- English description
-- Barcode / 条形码
-- Net weight / 净重
-- LOT / 批号
-- Expiry date / 有效期
-- 成分 / Ingredients
-
-IMPORTANT RULES FOR STATUS:
-- Field on label AND in master → compare exactly → "MATCH" or "MISMATCH"
-- Field on label but NOT in master file → "NOT_IN_MASTER" (not a failure)
-- Field in master but not visible on label → "NOT_VISIBLE" (not a failure)
-- overall = "FAIL" ONLY if at least one field is "MISMATCH"
-- "NOT_IN_MASTER" and "NOT_VISIBLE" never cause overall FAIL
-
-Return ONLY raw JSON:
-{"product_name_zh":"exact Chinese name from photo label","product_name_en":"exact English name from photo label","lot_on_label":"exact LOT from photo label or null","expiry_date":"exact expiry date from photo label or null","overall":"PASS or FAIL","summary_zh":"一句话","summary_en":"one sentence","fields":[{"field":"","field_zh":"","label_value":"exact text from photo","master_value":"exact text from master or null if not in master","status":"MATCH or MISMATCH or NOT_VISIBLE or NOT_IN_MASTER","note":""}]}`}
-        ]);
-        const result=JSON.parse(cRaw.replace(/```json|```/g,'').trim().match(/\{[\s\S]*\}/)[0]);
-        photoResults.push({photo,mf:mf.name,result,productIndex:p,totalProducts:products.length});
-
-        // Log each product as separate entry
-        checkLog.unshift({
-          timestamp:new Date().toISOString(),
-          product_name_zh:result.product_name_zh||prod.product_name_zh||mf.name,
-          product_name_en:result.product_name_en||prod.product_name_en||'',
-          lot:result.lot_on_label||prod.lot_on_label||'—',
-          expiry:result.expiry_date||prod.expiry_date||'',
-          master_file:mf.name,
-          photo_name:photo.name,
-          overall:result.overall,
-          summary_en:result.summary_en||'',
-          mismatch_count:(result.fields||[]).filter(f=>f.status==='MISMATCH').length
+                var liveEl = document.getElementById('liveRows');
+                if (ok) liveEl.insertAdjacentHTML('beforeend', row);
+                else liveEl.insertAdjacentHTML('afterbegin', row);
+              });
+          });
         });
-      }
-      localStorage.setItem('qc_log',JSON.stringify(checkLog.slice(0,2000)));
-
-      // Thumb: fail if any product fails
-      const anyFail=photoResults.some(r=>r.result?.overall!=='PASS');
-      setThumb(i,anyFail?'ts-no':'ts-ok',anyFail?'✗':'✓');
-      results.push(...photoResults);
-
-function setThumb(i,c,t){const e=document.getElementById('ts'+i);if(e){e.className='thumb-status '+c;e.textContent=t;}}
-function setProgress(p,m){document.getElementById('progFill').style.width=p+'%';document.getElementById('progLbl').textContent=m;}
-
-function renderResults(results){
-  const pass=results.filter(r=>r.result?.overall==='PASS').length;
-  const fail=results.length-pass;
-  results.sort((a,b)=>(a.result?.overall==='PASS'?1:0)-(b.result?.overall==='PASS'?1:0));
-  let html=`<div class="batch-summary">
-    <div class="sum-head"><div style="font-size:26px;">${fail===0?'✅':'⚠️'}</div>
-    <div><div style="font-size:17px;font-weight:800;">Batch Complete</div>
-    <div style="font-size:12px;color:var(--muted);">${results.length} products checked</div></div></div>
-    <div class="batch-stats">
-      <div class="stat s-all">📋 ${results.length}</div>
-      <div class="stat s-ok">✓ ${pass} Pass</div>
-      <div class="stat s-no">✗ ${fail} Fail</div>
-    </div>`;
-  results.forEach((r,i)=>{
-    const ok=r.result?.overall==='PASS';
-    const mis=(r.result?.fields||[]).filter(f=>f.status==='MISMATCH').length;
-    const multiLabel=r.totalProducts>1?` <span style="font-size:10px;background:#e6f4ff;color:#1677ff;padding:2px 6px;border-radius:8px;font-weight:600;">Product ${(r.productIndex||0)+1}/${r.totalProducts}</span>`:'';
-    const fields=(r.result?.fields||[]).map(f=>{
-      const dc=f.status==='MATCH'?'dok':f.status==='MISMATCH'?'dno':f.status==='NOT_IN_MASTER'?'dwarn':'dwarn';
-      return `<div class="frow"><div class="fdot ${dc}"></div><div>
-        <div class="fname">${f.field}${f.field_zh?' / '+f.field_zh:''} ${f.status==='NOT_IN_MASTER'?'<span style="background:#f5f5f5;color:#999;font-size:9px;padding:1px 5px;border-radius:4px;font-weight:600;">NOT IN MASTER</span>':f.status==='NOT_VISIBLE'?'<span style="background:#f5f5f5;color:#999;font-size:9px;padding:1px 5px;border-radius:4px;font-weight:600;">NOT VISIBLE</span>':''}</div>
-        <div class="fval">${f.label_value||'—'}</div>
-        ${f.status==='MISMATCH'&&f.master_value?`<div class="fnote">✦ Master: ${f.master_value}</div>`:''}
-        ${f.note?`<div class="fnote">⚠ ${f.note}</div>`:''}
-      </div></div>`;
-    }).join('');
-    html+=`<div class="b-item" onclick="toggleD(${i})">
-      <div class="b-top">
-        <img class="b-thumb" src="${r.photo.url}">
-        <div style="flex:1;min-width:0;">
-          <div class="b-name">${r.result?.product_name_zh||r.mf}${multiLabel}</div>
-          <div class="b-en">${r.result?.product_name_en||''}</div>
-          <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px;">
-            LOT: ${r.result?.lot_on_label||'—'}${r.result?.expiry_date?' · Exp: '+r.result.expiry_date:''}
-          </div>
-          <div style="font-size:10px;color:var(--muted);margin-top:1px;">📷 ${r.photo.name}</div>
-        </div>
-        <div class="badge ${ok?'b-pass':'b-fail'}">${ok?'PASS ✓':`FAIL ✗${mis?' ('+mis+')':''}`}</div>
-      </div>
-      ${r.result?.summary_zh?`<div style="font-size:12px;color:var(--muted);margin-top:4px;">${r.result.summary_zh}</div>`:''}
-      ${r.error?`<div style="font-size:12px;color:var(--red);margin-top:4px;">Error: ${r.error}</div>`:''}
-      <div class="b-detail" id="bd${i}">${fields}</div>
-      <div style="font-size:11px;color:var(--muted);text-align:right;margin-top:6px;">tap to see details ▾</div>
-    </div>`;
-function toggleD(id){const e=document.getElementById('bd'+id);if(e)e.classList.toggle('open');}
-
-async function gFetch(url){
-  const r=await fetch(url,{headers:{Authorization:'Bearer '+gToken}});
-  if(r.status===401){gToken=null;sessionStorage.removeItem('gtoken');setPill('off','● Sign in again');throw new Error('Session expired');}
-  if(!r.ok)throw new Error('Drive API error: '+r.status);
-  return r.json();
-}
-
-async function gDownload(id){
-  const r=await fetch(`https://www.googleapis.com/drive/v3/files/${id}?alt=media`,{headers:{Authorization:'Bearer '+gToken}});
-  if(!r.ok)throw new Error('Cannot download file');
-  return await r.arrayBuffer();
-}
-
-async function extractDocxText(arrayBuffer){
-  try{
-    const result=await mammoth.extractRawText({arrayBuffer});
-    return result.value.trim();
-  }catch(e){
-    return '';
-  }
-}
-
-async function claude(apiKey,content){
-  const r=await fetch('https://api.anthropic.com/v1/messages',{
-    method:'POST',
-    headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-    body:JSON.stringify({model:'claude-opus-4-5',max_tokens:1500,messages:[{role:'user',content}]})
+        return prodChain.then(function() {
+          setThumb(i, photoFail ? 'ts-no' : 'ts-ok', photoFail ? '✗' : '✓');
+        });
+      })
+      .catch(function(err) {
+        setThumb(i, 'ts-no', '!');
+        failCount++; totalProds++;
+        document.getElementById('cntT').textContent = totalProds;
+        document.getElementById('cntF').textContent = failCount;
+        document.getElementById('liveRows').insertAdjacentHTML('afterbegin',
+          '<div class="b-item" style="border-left:3px solid var(--red);">' +
+          '<div class="b-top"><img class="b-thumb" src="' + photo.url + '">' +
+          '<div style="flex:1;"><div class="b-name" style="color:var(--red);">Error</div>' +
+          '<div class="b-en">' + photo.name + '</div>' +
+          '<div style="font-size:12px;color:var(--red);margin-top:4px;">' + err.message + '</div></div>' +
+          '<div class="badge b-fail">ERROR</div></div></div>');
+      });
+    });
   });
-  const d=await r.json();
-  if(d.error)throw new Error(d.error.message);
-  return d.content.map(b=>b.text||'').join('');
+
+  chain.then(function() {
+    setProgress(100, '✓ All done!');
+    document.getElementById('progCount').textContent = total + '/' + total;
+    document.getElementById('sumSub').textContent = total + ' photos · ' + totalProds + ' products checked';
+    document.getElementById('sumIcon').textContent = failCount === 0 ? '✅' : '⚠️';
+    document.getElementById('checkBtn').disabled = false;
+    showToast('✓ Done! ' + passCount + ' pass, ' + failCount + ' fail');
+  });
 }
 
-function loadLog(){const r=localStorage.getItem('qc_log');checkLog=r?JSON.parse(r):[];}
-function renderLog(){
-  const el=document.getElementById('logList');
-  if(!checkLog.length){el.innerHTML='<div class="log-empty">No checks yet.<br>Go to Scan tab to start. 📷</div>';return;}
-  el.innerHTML=checkLog.map(e=>{
-    const ok=e.overall==='PASS';
-    const dt=new Date(e.timestamp);
-    const ds=dt.toLocaleDateString('zh-CN')+' '+dt.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});
-    return `<div class="log-item">
-      <div class="log-top"><div class="log-name">${e.product_name_zh||e.master_file}</div>
-      <div class="log-bdg ${ok?'bok':'bno'}">${ok?'PASS ✓':'FAIL ✗'}</div></div>
-      ${e.product_name_en?`<div style="font-size:12px;color:var(--muted);">${e.product_name_en}</div>`:''}
-      <div class="log-meta">LOT: ${e.lot||'—'}${e.expiry?' · Exp: '+e.expiry:''}<br>${e.master_file}${e.photo_name?' · 📷 '+e.photo_name:''} · ${ds}${!ok?' · '+e.mismatch_count+' mismatch':''}</div>
-    </div>`;
+function setThumb(i, c, t) { var e = document.getElementById('ts' + i); if (e) { e.className = 'ts ' + c; e.textContent = t; } }
+function setProgress(p, m) { document.getElementById('progFill').style.width = p + '%'; document.getElementById('progLbl').textContent = m; }
+function toggleD(id) { var e = document.getElementById('bd' + id); if (e) e.classList.toggle('open'); }
+
+// ── GOOGLE API ───────────────────────────────────────
+function gFetch(url) {
+  return fetch(url, { headers: { Authorization: 'Bearer ' + gToken } })
+    .then(function(r) {
+      if (r.status === 401) { gToken = null; sessionStorage.removeItem('gtoken'); setPill('off', '● Sign in again'); throw new Error('Session expired'); }
+      if (!r.ok) throw new Error('Drive error: ' + r.status);
+      return r.json();
+    });
+}
+
+function gDownload(id) {
+  return fetch('https://www.googleapis.com/drive/v3/files/' + id + '?alt=media', { headers: { Authorization: 'Bearer ' + gToken } })
+    .then(function(r) {
+      if (!r.ok) throw new Error('Cannot download file');
+      return r.arrayBuffer();
+    });
+}
+
+function extractDocxText(ab) {
+  try { return mammoth.extractRawText({ arrayBuffer: ab }).then(function(r) { return r.value.trim(); }); }
+  catch(e) { return Promise.resolve(''); }
+}
+
+function callClaude(apiKey, content) {
+  return fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+    body: JSON.stringify({ model: 'claude-opus-4-5', max_tokens: 1500, messages: [{ role: 'user', content: content }] })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.error) throw new Error(d.error.message);
+    return d.content.map(function(b) { return b.text || ''; }).join('');
+  });
+}
+
+// ── LOG ──────────────────────────────────────────────
+function loadLog() { var r = localStorage.getItem('qc_log'); checkLog = r ? JSON.parse(r) : []; }
+function renderLog() {
+  var el = document.getElementById('logList');
+  if (!checkLog.length) { el.innerHTML = '<div class="log-empty">No checks yet.<br>Go to Scan tab to start. 📷</div>'; return; }
+  el.innerHTML = checkLog.map(function(e) {
+    var ok = e.overall === 'PASS';
+    var dt = new Date(e.timestamp);
+    var ds = dt.toLocaleDateString('zh-CN') + ' ' + dt.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+    return '<div class="log-item" style="border-left:4px solid ' + (ok ? 'var(--green)' : 'var(--red)') + ';">' +
+      '<div class="log-top">' +
+      '<div style="flex:1;min-width:0;">' +
+      '<div class="log-name">' + (e.product_name_zh || e.master_file) + '</div>' +
+      (e.product_name_en ? '<div style="font-size:12px;color:var(--muted);">' + e.product_name_en + '</div>' : '') +
+      '</div>' +
+      '<div class="log-bdg ' + (ok ? 'bok' : 'bno') + '">' + (ok ? '✓ PASS' : '✗ FAIL') + '</div>' +
+      '</div>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">' +
+      '<div style="background:var(--paper);border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:11px;font-family:\'DM Mono\',monospace;"><span style="color:var(--muted);">批号 LOT</span><br><b>' + (e.lot || '—') + '</b></div>' +
+      (e.expiry ? '<div style="background:var(--paper);border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:11px;font-family:\'DM Mono\',monospace;"><span style="color:var(--muted);">有效期 Exp</span><br><b>' + e.expiry + '</b></div>' : '') +
+      (!ok ? '<div style="background:#fff2e8;border:1px solid #ffbb96;border-radius:8px;padding:5px 10px;font-size:11px;font-family:\'DM Mono\',monospace;"><span style="color:var(--muted);">不符合</span><br><b style="color:var(--red);">' + e.mismatch_count + ' mismatch</b></div>' : '') +
+      '</div>' +
+      '<div style="font-size:10px;color:var(--muted);margin-top:6px;font-family:\'DM Mono\',monospace;">📷 ' + (e.photo_name || e.master_file) + ' · ' + ds + '</div>' +
+      '</div>';
   }).join('');
 }
 
-function exportCSV(){
-  if(!checkLog.length){showToast('No log entries yet');return;}
-  const rows=[['Timestamp','Product ZH','Product EN','LOT','Expiry','Master File','Result','Mismatches']];
-  checkLog.forEach(e=>rows.push([e.timestamp,e.product_name_zh||'',e.product_name_en||'',e.lot||'',e.expiry||'',e.master_file||'',e.overall||'',e.mismatch_count||0]));
-  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}));
-  a.download=`qc_log_${new Date().toISOString().slice(0,10)}.csv`;a.click();showToast('✓ CSV exported');
+function exportCSV() {
+  if (!checkLog.length) { showToast('No log entries yet'); return; }
+  var rows = [['时间', '品种(ZH)', 'Product(EN)', '批号LOT', '有效期Expiry', 'Master File', '照片Photo', '结果Result', '不符合数']];
+  checkLog.forEach(function(e) {
+    rows.push([e.timestamp, e.product_name_zh||'', e.product_name_en||'', e.lot||'', e.expiry||'', e.master_file||'', e.photo_name||'', e.overall||'', e.mismatch_count||0]);
+  });
+  var csv = rows.map(function(r) { return r.map(function(v) { return '"' + String(v).replace(/"/g, '""') + '"'; }).join(','); }).join('\n');
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = 'qc_log_' + new Date().toISOString().slice(0, 10) + '.csv';
+  a.click();
+  showToast('✓ CSV exported');
 }
 
-function clearLog(){if(!confirm('Clear all log entries?'))return;checkLog=[];localStorage.removeItem('qc_log');renderLog();showToast('Log cleared');}
-function saveApiKey(){const k=document.getElementById('apiKey').value.trim();localStorage.setItem('qc_apikey',k);showToast(k?'✓ API key saved':'Cleared');}
-function saveFolder(){const v=document.getElementById('folderName').value.trim();localStorage.setItem('qc_folder',v);showToast('✓ Saved');if(gToken)loadFiles();}
+function clearLog() { if (!confirm('Clear all log entries?')) return; checkLog = []; localStorage.removeItem('qc_log'); renderLog(); showToast('Log cleared'); }
+function saveApiKey() { var k = document.getElementById('apiKey').value.trim(); localStorage.setItem('qc_apikey', k); showToast(k ? '✓ API key saved' : 'Cleared'); }
+function saveFolder() { var v = document.getElementById('folderName').value.trim(); localStorage.setItem('qc_folder', v); showToast('✓ Saved'); if (gToken) loadFiles(); }
 
-let _tt;
-function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(_tt);_tt=setTimeout(()=>el.classList.remove('show'),2800);}
+// ── TOAST ────────────────────────────────────────────
+var _tt;
+function showToast(msg) {
+  var el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(_tt); _tt = setTimeout(function() { el.classList.remove('show'); }, 2800);
+}
 </script>
 </body>
 </html>
