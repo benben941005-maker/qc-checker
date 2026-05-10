@@ -597,7 +597,25 @@ function runBatch() {
                 ]);
               })
               .then(function(cRaw) {
-                var result = JSON.parse(cRaw.replace(/```json|```/g, '').trim().match(/\{[\s\S]*\}/)[0]);
+                var result;
+                try {
+                  var cleaned = cRaw.replace(/```json|```/g, '').trim();
+                  var match = cleaned.match(/\{[\s\S]*\}/);
+                  if (!match) throw new Error('No JSON found');
+                  result = JSON.parse(match[0]);
+                } catch(parseErr) {
+                  // Fallback result if JSON broken
+                  result = {
+                    product_name_zh: prod.product_name_zh || mf.name,
+                    product_name_en: prod.product_name_en || '',
+                    lot_on_label: prod.lot_on_label || null,
+                    expiry_date: prod.expiry_date || null,
+                    overall: 'FAIL',
+                    summary_zh: 'AI返回格式错误，请重试',
+                    summary_en: 'AI response parse error, please retry',
+                    fields: []
+                  };
+                }
                 var ok = result.overall === 'PASS';
                 var notInMaster = result.overall === 'NOT_IN_MASTER';
                 if (!ok && !notInMaster) photoFail = true;
