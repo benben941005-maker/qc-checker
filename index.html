@@ -902,13 +902,15 @@ function callGemini(apiKey, content) {
     } else if (item.type === 'image') {
       parts.push({ inline_data: { mime_type: item.source.media_type, data: item.source.data } });
     } else if (item.type === 'document') {
-      // Gemini supports PDF as inline_data
       parts.push({ inline_data: { mime_type: item.source.media_type, data: item.source.data } });
     }
   });
-  return fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + apiKey, {
+  return fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'x-goog-api-key': apiKey
+    },
     body: JSON.stringify({
       contents: [{ parts: parts }],
       generationConfig: { maxOutputTokens: 8192, temperature: 0.1 }
@@ -923,7 +925,7 @@ function callGemini(apiKey, content) {
 }
 
 function callOpenRouter(apiKey, content) {
-  var model = localStorage.getItem('qc_openrouter_model') || 'google/gemini-flash-1.5:free';
+  var model = localStorage.getItem('qc_openrouter_model') || 'google/gemini-flash-1.5';
   // Convert to OpenAI format (which OpenRouter uses)
   var msgContent = [];
   content.forEach(function(item) {
