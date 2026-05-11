@@ -335,20 +335,42 @@ function loadFiles() {
   if (!gToken) return;
   var folder = localStorage.getItem('qc_folder') || 'registered product labels';
   setPill('busy', '● Loading...');
+
+  // First find the folder
   gFetch('https://www.googleapis.com/drive/v3/files?q=name=\'' + encodeURIComponent(folder) + '\' and mimeType=\'application/vnd.google-apps.folder\' and trashed=false&fields=files(id,name)')
     .then(function(f) {
-      if (!f.files || !f.files.length) { showToast('❌ Folder not found: ' + folder); setPill('on', '● Connected'); return; }
-      return gFetch('https://www.googleapis.com/drive/v3/files?q=\'' + f.files[0].id + '\' in parents and trashed=false and (name contains \'.docx\' or name contains \'.doc\')&fields=files(id,name,modifiedTime)&orderBy=name');
+      if (!f.files || !f.files.length) {
+        showToast('❌ Folder not found: ' + folder);
+        setPill('on', '● Connected');
+        return;
+      }
+      var folderId = f.files[0].id;
+      // Load ALL files with pagination
+      return loadAllFiles(folderId, null, []);
     })
-    .then(function(l) {
-      if (!l) return;
-      allFiles = l.files || [];
+    .then(function(files) {
+      if (!files) return;
+      allFiles = files;
       document.getElementById('fileCount').textContent = allFiles.length;
       setPill('on', '● Drive Connected');
       showToast('✓ ' + allFiles.length + ' master files loaded');
       updateBtn();
     })
     .catch(function(e) { setPill('off', '● Error'); showToast('❌ ' + e.message); });
+}
+
+function loadAllFiles(folderId, pageToken, accumulated) {
+  var url = 'https://www.googleapis.com/drive/v3/files?q=\'' + folderId + '\' in parents and trashed=false and (name contains \'.docx\' or name contains \'.doc\')&fields=nextPageToken,files(id,name,modifiedTime)&orderBy=name&pageSize=1000';
+  if (pageToken) url += '&pageToken=' + encodeURIComponent(pageToken);
+
+  return gFetch(url).then(function(l) {
+    var combined = accumulated.concat(l.files || []);
+    if (l.nextPageToken) {
+      // More pages — keep fetching
+      return loadAllFiles(folderId, l.nextPageToken, combined);
+    }
+    return combined;
+  });
 }
 
 function setPill(c, t) {
