@@ -1,4 +1,4 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -230,7 +230,7 @@ body{font-family:'Sora','Noto Sans SC',sans-serif;background:var(--paper);color:
     </div>
     <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">
       免费申请：<b>aistudio.google.com</b> → Get API Key<br>
-      使用模型：<b>gemini-1.5-flash</b> (免费·支持图片·100万token)
+      使用模型：<b>gemini-2.5-flash</b> (免费·支持图片·高质量)
     </div>
 
     <div class="set-row">
@@ -905,7 +905,7 @@ function callGemini(apiKey, content) {
       parts.push({ inline_data: { mime_type: item.source.media_type, data: item.source.data } });
     }
   });
-  return fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent', {
+  return fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
