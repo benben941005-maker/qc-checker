@@ -261,6 +261,7 @@ body{font-family:'Sora','Noto Sans SC',sans-serif;background:var(--paper);color:
 <div class="toast" id="toast"></div>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 // ── CONSTANTS ────────────────────────────────────────
 const CLIENT_ID = '297911594147-ig0jsulc8b225b2bfba5dv0rvp0029c2.apps.googleusercontent.com';
@@ -360,7 +361,7 @@ function loadFiles() {
 }
 
 function loadAllFiles(folderId, pageToken, accumulated) {
-  var url = 'https://www.googleapis.com/drive/v3/files?q=\'' + folderId + '\' in parents and trashed=false and (name contains \'.docx\' or name contains \'.doc\' or name contains \'.DOC\' or name contains \'.DOCX\' or mimeType=\'application/vnd.openxmlformats-officedocument.wordprocessingml.document\' or mimeType=\'application/msword\')&fields=nextPageToken,files(id,name,modifiedTime,mimeType)&orderBy=name&pageSize=1000';
+  var url = 'https://www.googleapis.com/drive/v3/files?q=\'' + folderId + '\' in parents and trashed=false and mimeType!=\'application/vnd.google-apps.folder\'&fields=nextPageToken,files(id,name,modifiedTime,mimeType)&orderBy=name&pageSize=1000';
   if (pageToken) url += '&pageToken=' + encodeURIComponent(pageToken);
 
   return gFetch(url).then(function(l) {
@@ -621,27 +622,41 @@ function runBatch() {
         products.forEach(function(prod, p) {
           prodChain = prodChain.then(function() {
             var mf = allFiles[Math.min(parseInt(prod.file_index) || 0, allFiles.length - 1)];
+            var isPdf   = mf.mimeType && mf.mimeType.indexOf('pdf') !== -1;
+            var isWord  = mf.mimeType && (mf.mimeType.indexOf('word') !== -1 || mf.mimeType.indexOf('msword') !== -1 || mf.mimeType.indexOf('wordprocessing') !== -1);
+            var isExcel = mf.mimeType && (mf.mimeType.indexOf('sheet') !== -1 || mf.mimeType.indexOf('excel') !== -1 || mf.mimeType.indexOf('spreadsheet') !== -1);
+            var isImage = mf.mimeType && mf.mimeType.indexOf('image/') !== -1;
+
             return gDownload(mf.id)
-              .then(function(ab) { return extractDocxText(ab); })
-              .then(function(docText) {
-                return callAI([
-                  { type: 'image', source: { type: 'base64', media_type: photo.mime, data: photo.b64 } },
-                  { type: 'text', text:
-                    'You are a bilingual product QC expert.\n' +
-                    'Focus ONLY on this specific product: "' + (prod.product_name_zh || prod.product_name_en || mf.name) + '"\n\n' +
-                    'MASTER WORD DOCUMENT (source of truth):\nFile: ' + mf.name + '\n\nMASTER TEXT:\n---\n' + (docText || '(no text extracted)') + '\n---\n\n' +
-                    'IMPORTANT RULES:\n' +
-                    '1. First check if this product exists in master → if NOT, set overall to "NOT_IN_MASTER"\n' +
-                    '2. LOT/批号 and Expiry date/有效期 are PRODUCTION BATCH info — DO NOT compare with master, just READ from label and mark as NOT_IN_MASTER status\n' +
-                    '3. Only compare PRODUCT INFO fields: Chinese name, English name, description/功能主治, dosage/服用方法, ingredients/成分, storage/贮存, contraindication/注意事项, packing/包装规格, extract ratio/提取比例\n' +
-                    '4. Field in both label and master → MATCH or MISMATCH\n' +
-                    '5. Field on label but not in master → NOT_IN_MASTER (not a failure)\n' +
-                    '6. Field in master but not visible on label → NOT_VISIBLE (not a failure)\n' +
-                    '7. overall = FAIL ONLY if product info MISMATCH found\n' +
-                    '8. overall = PASS if all product info fields match (ignore LOT/expiry differences)\n\n' +
-                    'Return ONLY raw JSON (be concise, short notes):\n{"product_name_zh":"exact from photo","product_name_en":"exact from photo","lot_on_label":"exact LOT from photo","expiry_date":"exact expiry from photo","overall":"PASS or FAIL or NOT_IN_MASTER","summary_zh":"一句话","summary_en":"one sentence","fields":[{"field":"","field_zh":"","label_value":"","master_value":"","status":"MATCH or MISMATCH or NOT_VISIBLE or NOT_IN_MASTER","note":""}]}'
-                  }
-                ]);
+              .then(function(ab) {
+                if (isPdf) {
+                  // PDF — send as document block
+                  var fileB64 = getFileBase64(ab);
+                  return callAI([
+                    { type: 'image', source: { type: 'base64', media_type: photo.mime, data: photo.b64 } },
+                    { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: fileB64 } },
+                    { type: 'text', text: buildComparePrompt(prod, mf, '') }
+                  ]);
+                } else if (isImage) {
+                  // Image master — send as second image
+                  var imgB64 = getFileBase64(ab);
+                  var imgMime = mf.mimeType || 'image/jpeg';
+                  return callAI([
+                    { type: 'text', text: 'LABEL PHOTO (to check):' },
+                    { type: 'image', source: { type: 'base64', media_type: photo.mime, data: photo.b64 } },
+                    { type: 'text', text: 'MASTER IMAGE (source of truth):' },
+                    { type: 'image', source: { type: 'base64', media_type: imgMime, data: imgB64 } },
+                    { type: 'text', text: buildComparePrompt(prod, mf, '') }
+                  ]);
+                } else {
+                  // Word / Excel — extract text first
+                  return extractDocxText(ab, mf.mimeType).then(function(docText) {
+                    return callAI([
+                      { type: 'image', source: { type: 'base64', media_type: photo.mime, data: photo.b64 } },
+                      { type: 'text', text: buildComparePrompt(prod, mf, docText) }
+                    ]);
+                  });
+                }
               })
               .then(function(cRaw) {
                 var result;
@@ -798,9 +813,56 @@ function gDownload(id) {
     });
 }
 
-function extractDocxText(ab) {
-  try { return mammoth.extractRawText({ arrayBuffer: ab }).then(function(r) { return r.value.trim(); }); }
-  catch(e) { return Promise.resolve(''); }
+function extractDocxText(ab, mimeType) {
+  var mime = mimeType || '';
+  // Word files — use mammoth
+  if (mime.indexOf('word') !== -1 || mime.indexOf('msword') !== -1 || mime.indexOf('wordprocessing') !== -1) {
+    try { return mammoth.extractRawText({ arrayBuffer: ab }).then(function(r) { return r.value.trim(); }); }
+    catch(e) { return Promise.resolve(''); }
+  }
+  // Excel files — use SheetJS
+  if (mime.indexOf('sheet') !== -1 || mime.indexOf('excel') !== -1 || mime.indexOf('spreadsheet') !== -1) {
+    try {
+      var XLSX = window.XLSX;
+      if (XLSX) {
+        var wb = XLSX.read(ab, { type: 'array' });
+        var text = '';
+        wb.SheetNames.forEach(function(name) {
+          text += XLSX.utils.sheet_to_txt(wb.Sheets[name]) + '\n';
+        });
+        return Promise.resolve(text.trim());
+      }
+    } catch(e) {}
+    return Promise.resolve('');
+  }
+  // Others — return empty
+  return Promise.resolve('');
+}
+
+function buildComparePrompt(prod, mf, docText) {
+  return 'You are a bilingual product QC expert.\n' +
+    'Focus ONLY on this specific product: "' + (prod.product_name_zh || prod.product_name_en || mf.name) + '"\n\n' +
+    'MASTER FILE (source of truth): ' + mf.name + '\n' +
+    (docText ? 'MASTER TEXT:\n---\n' + docText + '\n---\n\n' : '(Read master content from the attached PDF/document)\n\n') +
+    'IMPORTANT RULES:\n' +
+    '1. First check if this product exists in master → if NOT, set overall to "NOT_IN_MASTER"\n' +
+    '2. LOT/批号 and Expiry/有效期 are batch info — just READ from label, do NOT compare with master, mark as NOT_IN_MASTER\n' +
+    '3. Only compare: Chinese name, English name, 功能主治, 服用方法, 成分, 贮存, 注意事项, 包装规格, 提取比例\n' +
+    '4. MATCH or MISMATCH for fields in both\n' +
+    '5. NOT_IN_MASTER if on label but not in master (not a failure)\n' +
+    '6. NOT_VISIBLE if in master but not on label (not a failure)\n' +
+    '7. overall = FAIL only if MISMATCH found\n' +
+    '8. overall = PASS if all product info matches\n\n' +
+    'Return ONLY raw JSON:\n{"product_name_zh":"exact from photo","product_name_en":"exact from photo","lot_on_label":"exact LOT from photo","expiry_date":"exact expiry from photo","overall":"PASS or FAIL or NOT_IN_MASTER","summary_zh":"一句话","summary_en":"one sentence","fields":[{"field":"","field_zh":"","label_value":"","master_value":"","status":"MATCH or MISMATCH or NOT_VISIBLE or NOT_IN_MASTER","note":""}]}';
+}
+
+function getFileBase64(ab) {
+  var bytes = new Uint8Array(ab);
+  var binary = '';
+  for (var i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
 }
 
 function callAI(content) {
@@ -839,6 +901,9 @@ function callGemini(apiKey, content) {
       parts.push({ text: item.text });
     } else if (item.type === 'image') {
       parts.push({ inline_data: { mime_type: item.source.media_type, data: item.source.data } });
+    } else if (item.type === 'document') {
+      // Gemini supports PDF as inline_data
+      parts.push({ inline_data: { mime_type: item.source.media_type, data: item.source.data } });
     }
   });
   return fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + apiKey, {
@@ -865,6 +930,9 @@ function callOpenRouter(apiKey, content) {
     if (item.type === 'text') {
       msgContent.push({ type: 'text', text: item.text });
     } else if (item.type === 'image') {
+      msgContent.push({ type: 'image_url', image_url: { url: 'data:' + item.source.media_type + ';base64,' + item.source.data } });
+    } else if (item.type === 'document') {
+      // Send PDF as image_url for OpenRouter
       msgContent.push({ type: 'image_url', image_url: { url: 'data:' + item.source.media_type + ';base64,' + item.source.data } });
     }
   });
