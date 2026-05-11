@@ -360,7 +360,7 @@ function loadFiles() {
 }
 
 function loadAllFiles(folderId, pageToken, accumulated) {
-  var url = 'https://www.googleapis.com/drive/v3/files?q=\'' + folderId + '\' in parents and trashed=false and (name contains \'.docx\' or name contains \'.doc\')&fields=nextPageToken,files(id,name,modifiedTime)&orderBy=name&pageSize=1000';
+  var url = 'https://www.googleapis.com/drive/v3/files?q=\'' + folderId + '\' in parents and trashed=false and (name contains \'.docx\' or name contains \'.doc\' or name contains \'.DOC\' or name contains \'.DOCX\' or mimeType=\'application/vnd.openxmlformats-officedocument.wordprocessingml.document\' or mimeType=\'application/msword\')&fields=nextPageToken,files(id,name,modifiedTime,mimeType)&orderBy=name&pageSize=1000';
   if (pageToken) url += '&pageToken=' + encodeURIComponent(pageToken);
 
   return gFetch(url).then(function(l) {
